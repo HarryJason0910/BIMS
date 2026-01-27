@@ -1,0 +1,7 @@
+
+  - [x] 23.5 Implement rebid functionality
+    - Add rebid button for eligible bids
+    - Show rebid form with pre-filled data
+    - Allow updating resume and job description
+    - Display error if rebidding not allowed
+    - _Requirements: 5.1, 5.2, 5.3_
