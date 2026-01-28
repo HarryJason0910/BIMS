@@ -13,6 +13,7 @@ export enum BidStatus {
   SUBMITTED = "SUBMITTED",
   REJECTED = "REJECTED",
   INTERVIEW_STAGE = "INTERVIEW_STAGE",
+  INTERVIEW_FAILED = "INTERVIEW_FAILED",
   CLOSED = "CLOSED"
 }
 
@@ -22,6 +23,14 @@ export enum BidStatus {
 export enum ResumeCheckerType {
   ATS = "ATS",
   RECRUITER = "RECRUITER"
+}
+
+/**
+ * Enum representing the origin of a bid
+ */
+export enum BidOrigin {
+  LINKEDIN = "LINKEDIN",
+  BID = "BID"
 }
 
 /**
@@ -35,6 +44,8 @@ export interface CreateBidData {
   mainStacks: string[];
   jobDescriptionPath: string;
   resumePath: string;
+  origin: BidOrigin;
+  recruiter?: string; // Required when origin is LINKEDIN
   originalBidId?: string; // For rebids
 }
 
@@ -57,6 +68,8 @@ export class Bid {
     public readonly mainStacks: string[],
     public readonly jobDescriptionPath: string,
     public readonly resumePath: string,
+    public readonly origin: BidOrigin,
+    public readonly recruiter: string | null,
     private _bidStatus: BidStatus,
     private _interviewWinning: boolean,
     private _bidDetail: string,
@@ -91,6 +104,13 @@ export class Bid {
     if (!data.resumePath || data.resumePath.trim() === '') {
       throw new Error('Bid resumePath is required');
     }
+    if (!data.origin) {
+      throw new Error('Bid origin is required');
+    }
+    // Validate recruiter is provided when origin is LINKEDIN
+    if (data.origin === BidOrigin.LINKEDIN && (!data.recruiter || data.recruiter.trim() === '')) {
+      throw new Error('Recruiter name is required when origin is LINKEDIN');
+    }
 
     // Generate unique ID (in production, this would use a proper ID generator)
     const id = `bid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -109,6 +129,8 @@ export class Bid {
       data.mainStacks,
       data.jobDescriptionPath,
       data.resumePath,
+      data.origin,
+      data.recruiter || null,
       BidStatus.NEW,           // Default status
       false,                    // Default interviewWinning
       '',                       // Default bidDetail
@@ -187,6 +209,17 @@ export class Bid {
   }
 
   /**
+   * Mark bid as interview failed
+   * Can only be called when bid is in INTERVIEW_STAGE
+   */
+  markInterviewFailed(): void {
+    if (this._bidStatus !== BidStatus.INTERVIEW_STAGE) {
+      throw new Error('Can only mark interview as failed when bid is in INTERVIEW_STAGE');
+    }
+    this._bidStatus = BidStatus.INTERVIEW_FAILED;
+  }
+
+  /**
    * Attach a warning message to bidDetail
    * Used for company history warnings
    */
@@ -239,6 +272,8 @@ export class Bid {
       mainStacks: this.mainStacks,
       jobDescriptionPath: this.jobDescriptionPath,
       resumePath: this.resumePath,
+      origin: this.origin,
+      recruiter: this.recruiter,
       bidStatus: this._bidStatus,
       interviewWinning: this._interviewWinning,
       bidDetail: this._bidDetail,

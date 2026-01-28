@@ -1,4 +1,4 @@
-import { Bid } from '../domain/Bid';
+import { Bid, BidOrigin } from '../domain/Bid';
 import { DuplicationDetectionPolicy, DuplicationWarning } from '../domain/DuplicationDetectionPolicy';
 import { CompanyHistory } from '../domain/CompanyHistory';
 import { IBidRepository } from './IBidRepository';
@@ -14,6 +14,8 @@ export interface CreateBidRequest {
   mainStacks: string[];
   jobDescriptionPath: string;
   resumePath: string;
+  origin: BidOrigin;
+  recruiter?: string;
 }
 
 /**
@@ -77,6 +79,8 @@ export class CreateBidUseCase {
       mainStacks: request.mainStacks,
       jobDescriptionPath: request.jobDescriptionPath,
       resumePath: request.resumePath,
+      origin: request.origin,
+      recruiter: request.recruiter,
     });
 
     // 6. Attach company warning to bidDetail if exists
@@ -104,6 +108,7 @@ export class CreateBidUseCase {
       'mainStacks',
       'jobDescriptionPath',
       'resumePath',
+      'origin',
     ];
 
     for (const field of requiredFields) {
@@ -118,19 +123,17 @@ export class CreateBidUseCase {
     }
 
     // Validate string fields are not empty strings
-    const stringFields: (keyof CreateBidRequest)[] = [
-      'link',
-      'company',
-      'client',
-      'role',
-      'jobDescriptionPath',
-      'resumePath',
-    ];
+    const stringFields = ['link', 'company', 'client', 'role', 'jobDescriptionPath', 'resumePath'];
 
     for (const field of stringFields) {
-      if (typeof request[field] === 'string' && (request[field] as string).trim() === '') {
+      if (typeof request[field as keyof CreateBidRequest] === 'string' && (request[field as keyof CreateBidRequest] as string).trim() === '') {
         throw new Error(`Field ${field} cannot be empty`);
       }
+    }
+
+    // Validate recruiter is provided when origin is LINKEDIN
+    if (request.origin === BidOrigin.LINKEDIN && (!request.recruiter || request.recruiter.trim() === '')) {
+      throw new Error('Recruiter name is required when origin is LINKEDIN');
     }
   }
 }

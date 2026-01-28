@@ -7,6 +7,9 @@ export interface InterviewFilterOptions {
   company?: string;
   role?: string;
   status?: string;
+  recruiter?: string;
+  interviewType?: string;
+  attendees?: string;
   dateFrom?: Date;
   dateTo?: Date;
 }

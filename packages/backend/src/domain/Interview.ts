@@ -14,6 +14,18 @@ export enum InterviewBase {
 }
 
 /**
+ * Enum representing the type of interview
+ */
+export enum InterviewType {
+  HR = "HR",
+  TECH_INTERVIEW_1 = "TECH_INTERVIEW_1",
+  TECH_INTERVIEW_2 = "TECH_INTERVIEW_2",
+  TECH_INTERVIEW_3 = "TECH_INTERVIEW_3",
+  FINAL_INTERVIEW = "FINAL_INTERVIEW",
+  CLIENT_INTERVIEW = "CLIENT_INTERVIEW"
+}
+
+/**
  * Enum representing the status of an interview
  */
 export enum InterviewStatus {
@@ -37,7 +49,7 @@ export interface CreateInterviewData {
   role: string;
   jobDescription: string;
   resume: string;
-  interviewType: string;
+  interviewType: InterviewType;
   recruiter: string;
   attendees: string[];
   detail: string;
@@ -72,7 +84,7 @@ export class Interview {
     public readonly role: string,
     public readonly jobDescription: string,
     public readonly resume: string,
-    public readonly interviewType: string,
+    public readonly interviewType: InterviewType,
     public readonly recruiter: string,
     public readonly attendees: string[],
     private _status: InterviewStatus,
@@ -109,7 +121,7 @@ export class Interview {
     if (!data.role || data.role.trim() === '') {
       throw new Error('Interview role is required');
     }
-    if (!data.interviewType || data.interviewType.trim() === '') {
+    if (!data.interviewType) {
       throw new Error('Interview interviewType is required');
     }
     if (!data.recruiter || data.recruiter.trim() === '') {

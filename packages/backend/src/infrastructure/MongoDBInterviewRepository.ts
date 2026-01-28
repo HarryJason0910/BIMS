@@ -1,6 +1,6 @@
 import { Collection, ObjectId } from 'mongodb';
 import { IInterviewRepository, InterviewFilterOptions, InterviewSortOptions } from '../application/IInterviewRepository';
-import { Interview, InterviewBase, InterviewStatus } from '../domain/Interview';
+import { Interview, InterviewBase, InterviewStatus, InterviewType } from '../domain/Interview';
 import { MongoDBConnection } from './MongoDBConnection';
 
 /**
@@ -87,7 +87,7 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
       role: doc.role,
       jobDescription: doc.jobDescription,
       resume: doc.resume,
-      interviewType: doc.interviewType,
+      interviewType: doc.interviewType as InterviewType,
       recruiter: doc.recruiter,
       attendees: doc.attendees,
       detail: doc.detail,
@@ -138,6 +138,15 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
       }
       if (filters.status) {
         query.status = filters.status;
+      }
+      if (filters.recruiter) {
+        query.recruiter = { $regex: new RegExp(filters.recruiter, 'i') };
+      }
+      if (filters.interviewType) {
+        query.interviewType = filters.interviewType;
+      }
+      if (filters.attendees) {
+        query.attendees = { $elemMatch: { $regex: new RegExp(filters.attendees, 'i') } };
       }
       if (filters.dateFrom || filters.dateTo) {
         query.date = {};

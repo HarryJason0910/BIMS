@@ -23,6 +23,7 @@ export class InterviewController {
     this.router.post('/:id/attend', this.markAttended.bind(this));
     this.router.post('/:id/close', this.closeInterview.bind(this));
     this.router.post('/:id/complete', this.completeInterview.bind(this));
+    this.router.post('/:id/cancel', this.cancelInterview.bind(this));
     this.router.put('/:id', this.updateInterview.bind(this));
     this.router.delete('/:id', this.deleteInterview.bind(this));
   }
@@ -112,13 +113,16 @@ export class InterviewController {
 
   private async getAllInterviews(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { company, role, status, dateFrom, dateTo, sortBy, sortOrder } = req.query;
+      const { company, role, status, recruiter, interviewType, attendees, dateFrom, dateTo, sortBy, sortOrder } = req.query;
 
       // Build filter options
       const filters: any = {};
       if (company) filters.company = company as string;
       if (role) filters.role = role as string;
       if (status) filters.status = status as string;
+      if (recruiter) filters.recruiter = recruiter as string;
+      if (interviewType) filters.interviewType = interviewType as string;
+      if (attendees) filters.attendees = attendees as string;
       if (dateFrom) filters.dateFrom = new Date(dateFrom as string);
       if (dateTo) filters.dateTo = new Date(dateTo as string);
 
@@ -223,6 +227,28 @@ export class InterviewController {
       });
 
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async cancelInterview(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const interview = await this.interviewRepository.findById(id);
+
+      if (!interview) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: `Interview with id ${id} not found`,
+        });
+        return;
+      }
+
+      interview.markAsCancelled();
+      
+      await this.interviewRepository.update(interview);
+      res.json({ success: true, status: interview.status });
     } catch (error) {
       next(error);
     }

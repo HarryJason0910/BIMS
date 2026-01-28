@@ -30,6 +30,21 @@ export class InMemoryInterviewRepository implements IInterviewRepository {
       if (filters.status) {
         results = results.filter(interview => interview.status === filters.status);
       }
+      if (filters.recruiter) {
+        results = results.filter(interview => 
+          interview.recruiter.toLowerCase().includes(filters.recruiter!.toLowerCase())
+        );
+      }
+      if (filters.interviewType) {
+        results = results.filter(interview => interview.interviewType === filters.interviewType);
+      }
+      if (filters.attendees) {
+        results = results.filter(interview => 
+          interview.attendees.some(attendee => 
+            attendee.toLowerCase().includes(filters.attendees!.toLowerCase())
+          )
+        );
+      }
       if (filters.dateFrom) {
         results = results.filter(interview => interview.date >= filters.dateFrom!);
       }

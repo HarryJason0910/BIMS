@@ -4,6 +4,7 @@ import { Container } from './container';
 import { BidController } from './BidController';
 import { InterviewController } from './InterviewController';
 import { CompanyHistoryController } from './CompanyHistoryController';
+import { TechStackController } from './TechStackController';
 
 export interface ServerConfig {
   port: number;
@@ -17,6 +18,7 @@ export class Server {
   private bidController!: BidController;
   private interviewController!: InterviewController;
   private companyHistoryController!: CompanyHistoryController;
+  private techStackController!: TechStackController;
 
   constructor(config: ServerConfig, container: Container) {
     this.app = express();
@@ -79,6 +81,8 @@ export class Server {
     this.companyHistoryController = new CompanyHistoryController(
       this.container.companyHistoryRepository
     );
+
+    this.techStackController = new TechStackController();
   }
 
   private setupRoutes(): void {
@@ -87,29 +91,30 @@ export class Server {
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
     });
 
-    // Email connection status endpoint
-    this.app.get('/api/email/status', async (_req: Request, res: Response) => {
-      try {
-        const isConnected = this.container.emailAdapter 
-          ? await this.container.emailAdapter.testConnection()
-          : false;
-        res.json({ 
-          connected: isConnected,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        res.json({ 
-          connected: false,
-          error: (error as Error).message,
-          timestamp: new Date().toISOString()
-        });
-      }
-    });
+    // File download endpoint
+    this.app.get('/api/files/:path', this.downloadFile.bind(this));
 
     // Mount controller routes
     this.app.use('/api/bids', this.bidController.getRouter());
     this.app.use('/api/interviews', this.interviewController.getRouter());
     this.app.use('/api/company-history', this.companyHistoryController.getRouter());
+    this.app.use('/api/tech-stacks', this.techStackController.getRouter());
+  }
+
+  private async downloadFile(req: Request, res: Response): Promise<void> {
+    try {
+      const filePath = decodeURIComponent(req.params.path);
+      const fileBuffer = await this.container.fileStorageService.readResume(filePath);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filePath.split('/').pop()}"`);
+      res.send(fileBuffer);
+    } catch (error) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'File not found'
+      });
+    }
   }
 
   private setupErrorHandling(): void {

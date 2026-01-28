@@ -36,6 +36,16 @@ export class InMemoryBidRepository implements IBidRepository {
       if (filters.dateTo) {
         results = results.filter(bid => bid.date <= filters.dateTo!);
       }
+      if (filters.mainStacks && filters.mainStacks.length > 0) {
+        // Filter: bid must include ALL specified stacks
+        results = results.filter(bid => 
+          filters.mainStacks!.every(stack => 
+            bid.mainStacks.some(bidStack => 
+              bidStack.toLowerCase() === stack.toLowerCase()
+            )
+          )
+        );
+      }
     }
 
     // Apply sorting

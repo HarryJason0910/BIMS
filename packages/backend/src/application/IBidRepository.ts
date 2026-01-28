@@ -9,6 +9,7 @@ export interface BidFilterOptions {
   status?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  mainStacks?: string[]; // Filter by stacks - bid must include ALL specified stacks
 }
 
 /**

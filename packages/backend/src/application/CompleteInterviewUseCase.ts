@@ -82,10 +82,15 @@ export class CompleteInterviewUseCase {
     }
 
     // 7. If interview succeeded and has bidId, update bid status to CLOSED
-    if (request.success && interview.bidId) {
+    // If interview failed and has bidId, update bid status to INTERVIEW_FAILED
+    if (interview.bidId) {
       const bid = await this.bidRepository.findById(interview.bidId);
       if (bid) {
-        bid.markAsClosed();
+        if (request.success) {
+          bid.markAsClosed();
+        } else {
+          bid.markInterviewFailed();
+        }
         await this.bidRepository.update(bid);
       }
     }

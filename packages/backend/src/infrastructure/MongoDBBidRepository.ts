@@ -1,6 +1,6 @@
 import { Collection, ObjectId } from 'mongodb';
 import { IBidRepository, BidFilterOptions, BidSortOptions } from '../application/IBidRepository';
-import { Bid, BidStatus, ResumeCheckerType } from '../domain/Bid';
+import { Bid, BidStatus, ResumeCheckerType, BidOrigin } from '../domain/Bid';
 import { MongoDBConnection } from './MongoDBConnection';
 
 /**
@@ -17,6 +17,8 @@ interface BidDocument {
   mainStacks: string[];
   jobDescriptionPath: string;
   resumePath: string;
+  origin: string;
+  recruiter: string | null;
   bidStatus: string;
   interviewWinning: boolean;
   bidDetail: string;
@@ -64,6 +66,8 @@ export class MongoDBBidRepository implements IBidRepository {
       mainStacks: json.mainStacks,
       jobDescriptionPath: json.jobDescriptionPath,
       resumePath: json.resumePath,
+      origin: json.origin,
+      recruiter: json.recruiter,
       bidStatus: json.bidStatus,
       interviewWinning: json.interviewWinning,
       bidDetail: json.bidDetail,
@@ -88,6 +92,8 @@ export class MongoDBBidRepository implements IBidRepository {
       mainStacks: doc.mainStacks,
       jobDescriptionPath: doc.jobDescriptionPath,
       resumePath: doc.resumePath,
+      origin: doc.origin as BidOrigin,
+      recruiter: doc.recruiter || undefined,
       originalBidId: doc.originalBidId || undefined,
     });
 
@@ -149,6 +155,12 @@ export class MongoDBBidRepository implements IBidRepository {
         if (filters.dateTo) {
           query.date.$lte = filters.dateTo;
         }
+      }
+      if (filters.mainStacks && filters.mainStacks.length > 0) {
+        // Filter: bid must include ALL specified stacks (case-insensitive)
+        query.mainStacks = {
+          $all: filters.mainStacks.map(stack => new RegExp(`^${stack}$`, 'i'))
+        };
       }
     }
 

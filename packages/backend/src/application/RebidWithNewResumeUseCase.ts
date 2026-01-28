@@ -73,6 +73,8 @@ export class RebidWithNewResumeUseCase {
       mainStacks: originalBid.mainStacks,
       jobDescriptionPath: request.newJobDescriptionPath || originalBid.jobDescriptionPath,
       resumePath: request.newResumePath,
+      origin: originalBid.origin,
+      recruiter: originalBid.recruiter || undefined,
       originalBidId: originalBid.id, // 5. Link new bid to original bid
     });
 
@@ -87,6 +89,8 @@ export class RebidWithNewResumeUseCase {
         mainStacks: newBid.mainStacks,
         jobDescriptionPath: newBid.jobDescriptionPath,
         resumePath: newBid.resumePath,
+        origin: newBid.origin,
+        recruiter: newBid.recruiter || undefined,
       },
       existingBids
     );
