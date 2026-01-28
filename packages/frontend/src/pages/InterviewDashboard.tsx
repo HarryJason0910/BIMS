@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
+import { Box, Fab, Zoom } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { InterviewList } from '../components/InterviewList';
 import { InterviewForm } from '../components/InterviewForm';
 import { InterviewFilters } from '../components/InterviewFilters';
-import { CompleteInterviewForm } from '../components/CompleteInterviewForm';
+import { EditInterviewDetailForm } from '../components/EditInterviewDetailForm';
 import { Interview, InterviewFilters as InterviewFiltersType, SortOptions } from '../api/types';
 
-type ViewMode = 'list' | 'create' | 'complete';
+type ViewMode = 'list' | 'create' | 'editDetail';
 
 export const InterviewDashboard: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -41,12 +41,12 @@ export const InterviewDashboard: React.FC = () => {
     setViewMode('list');
   };
 
-  const handleCompleteClick = (interview: Interview) => {
+  const handleEditDetailClick = (interview: Interview) => {
     setSelectedInterview(interview);
-    setViewMode('complete');
+    setViewMode('editDetail');
   };
 
-  const handleCompleteSuccess = () => {
+  const handleEditDetailSuccess = () => {
     setViewMode('list');
     setSelectedInterview(null);
   };
@@ -57,55 +57,54 @@ export const InterviewDashboard: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Interview Dashboard
-        </Typography>
-        {viewMode === 'list' && (
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={() => setViewMode('create')}
-          >
-            Schedule Interview
-          </Button>
-        )}
-      </Box>
-
+    <Box sx={{ position: 'relative', pb: 10 }}>
       {viewMode === 'list' && (
         <>
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <InterviewFilters
-              onFiltersChange={setFilters}
-              onSortChange={setSort}
-            />
-          </Paper>
+          <InterviewFilters
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+          />
           <InterviewList
             filters={filters}
             sort={sort}
-            onInterviewSelect={handleCompleteClick}
+            onInterviewSelect={handleEditDetailClick}
           />
+          
+          {/* Floating Action Button */}
+          <Zoom in={true}>
+            <Fab
+              color="primary"
+              aria-label="schedule interview"
+              onClick={() => setViewMode('create')}
+              sx={{
+                position: 'fixed',
+                bottom: 32,
+                right: 32,
+              }}
+            >
+              <AddIcon />
+            </Fab>
+          </Zoom>
         </>
       )}
 
       {viewMode === 'create' && (
-        <Paper sx={{ p: 3 }}>
+        <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
           <InterviewForm
             onSuccess={handleCreateSuccess}
             onCancel={handleCancel}
           />
-        </Paper>
+        </Box>
       )}
 
-      {viewMode === 'complete' && selectedInterview && (
-        <Paper sx={{ p: 3 }}>
-          <CompleteInterviewForm
+      {viewMode === 'editDetail' && selectedInterview && (
+        <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+          <EditInterviewDetailForm
             interview={selectedInterview}
-            onSuccess={handleCompleteSuccess}
+            onSuccess={handleEditDetailSuccess}
             onCancel={handleCancel}
           />
-        </Paper>
+        </Box>
       )}
     </Box>
   );

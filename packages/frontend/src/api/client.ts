@@ -2,7 +2,6 @@
  * API Client for Job Bid Management System
  * 
  * Provides methods for all backend API endpoints with error handling and retry logic
- * Automatically uses Tauri HTTP client in desktop mode, Axios in web mode
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -23,9 +22,6 @@ import {
   SortOptions
 } from './types';
 
-// Detect Tauri environment
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-
 /**
  * API Client Configuration
  */
@@ -45,12 +41,6 @@ export class ApiClient {
   constructor(config: ApiClientConfig = {}) {
     const baseURL = config.baseURL || (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:3000';
     
-    // Log environment for debugging
-    if (isTauri) {
-      console.log('[Tauri Mode] API Client initialized with baseURL:', baseURL);
-      console.log('[Tauri Mode] Using native fetch for HTTP requests');
-    }
-    
     this.client = axios.create({
       baseURL,
       timeout: config.timeout || 30000,
@@ -66,33 +56,12 @@ export class ApiClient {
       (response) => response,
       (error) => this.handleError(error)
     );
-    
-    // Add request interceptor for debugging in Tauri
-    if (isTauri) {
-      this.client.interceptors.request.use(
-        (config) => {
-          console.log('[Tauri Request]', config.method?.toUpperCase(), config.url);
-          return config;
-        },
-        (error) => {
-          console.error('[Tauri Request Error]', error);
-          return Promise.reject(error);
-        }
-      );
-    }
   }
 
   /**
    * Handle API errors with retry logic
    */
   private async handleError(error: AxiosError): Promise<never> {
-    console.error('[API Error]', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      isTauri
-    });
-    
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
@@ -150,6 +119,10 @@ export class ApiClient {
       formData.append('mainStacks', JSON.stringify(request.mainStacks));
       formData.append('jobDescription', request.jobDescription);
       formData.append('resume', request.resumeFile);
+      formData.append('origin', request.origin);
+      if (request.recruiter) {
+        formData.append('recruiter', request.recruiter);
+      }
 
       const response = await this.client.post<CreateBidResponse>('/api/bids', formData, {
         headers: {
@@ -165,11 +138,16 @@ export class ApiClient {
    */
   async getBids(filters?: BidFilters, sort?: SortOptions): Promise<Bid[]> {
     return this.withRetry(async () => {
-      const params = {
+      const params: any = {
         ...filters,
         sortBy: sort?.field,
         sortOrder: sort?.order
       };
+      
+      // Convert mainStacks array to JSON string for query parameter
+      if (filters?.mainStacks && filters.mainStacks.length > 0) {
+        params.mainStacks = JSON.stringify(filters.mainStacks);
+      }
       
       const response = await this.client.get<Bid[]>('/api/bids', { params });
       return response.data;
@@ -192,6 +170,16 @@ export class ApiClient {
   async updateBid(id: string, updates: Partial<Bid>): Promise<Bid> {
     return this.withRetry(async () => {
       const response = await this.client.put<Bid>(`/api/bids/${id}`, updates);
+      return response.data;
+    });
+  }
+
+  /**
+   * Mark bid as rejected
+   */
+  async markBidRejected(id: string): Promise<{ success: boolean }> {
+    return this.withRetry(async () => {
+      const response = await this.client.post<{ success: boolean }>(`/api/bids/${id}/reject`);
       return response.data;
     });
   }
@@ -243,6 +231,37 @@ export class ApiClient {
   async downloadJobDescription(bidId: string): Promise<Blob> {
     return this.withRetry(async () => {
       const response = await this.client.get(`/api/bids/${bidId}/jd`, {
+        responseType: 'blob'
+      });
+      return response.data;
+    });
+  }
+
+  /**
+   * Get candidate resumes for rebidding based on stack matching
+   */
+  async getCandidateResumes(bidId: string): Promise<{
+    bidId: string;
+    targetStacks: string[];
+    candidates: Array<{
+      folderName: string;
+      resumePath: string;
+      matchingStacks: string[];
+      matchCount: number;
+    }>;
+  }> {
+    return this.withRetry(async () => {
+      const response = await this.client.get(`/api/bids/${bidId}/candidate-resumes`);
+      return response.data;
+    });
+  }
+
+  /**
+   * Download a specific resume by path
+   */
+  async downloadResumeByPath(resumePath: string): Promise<Blob> {
+    return this.withRetry(async () => {
+      const response = await this.client.get(`/api/files/${encodeURIComponent(resumePath)}`, {
         responseType: 'blob'
       });
       return response.data;
@@ -327,6 +346,16 @@ export class ApiClient {
   }
 
   /**
+   * Cancel an interview
+   */
+  async cancelInterview(id: string): Promise<{ success: boolean; status: string }> {
+    return this.withRetry(async () => {
+      const response = await this.client.post<{ success: boolean; status: string }>(`/api/interviews/${id}/cancel`);
+      return response.data;
+    });
+  }
+
+  /**
    * Complete an interview
    */
   async completeInterview(id: string, request: CompleteInterviewRequest): Promise<CompleteInterviewResponse> {
@@ -360,14 +389,124 @@ export class ApiClient {
     });
   }
 
-  // ==================== EMAIL STATUS ENDPOINT ====================
+  // ==================== TECH STACK ENDPOINTS ====================
 
   /**
-   * Check email connection status
+   * Get all available tech stacks
    */
-  async getEmailStatus(): Promise<{ connected: boolean; error?: string; timestamp: string }> {
+  async getTechStacks(): Promise<string[]> {
     return this.withRetry(async () => {
-      const response = await this.client.get<{ connected: boolean; error?: string; timestamp: string }>('/api/email/status');
+      const response = await this.client.get<string[]>('/api/tech-stacks');
+      return response.data;
+    });
+  }
+
+  /**
+   * Add a new tech stack
+   */
+  async addTechStack(stack: string): Promise<{ message: string; stack: string; allStacks: string[] }> {
+    return this.withRetry(async () => {
+      const response = await this.client.post<{ message: string; stack: string; allStacks: string[] }>(
+        '/api/tech-stacks',
+        { stack }
+      );
+      return response.data;
+    });
+  }
+
+  // ==================== ANALYTICS ENDPOINTS ====================
+
+  /**
+   * Get overview analytics
+   */
+  async getAnalyticsOverview(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/overview');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get bid performance analytics
+   */
+  async getBidPerformance(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/bid-performance');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get interview performance analytics
+   */
+  async getInterviewPerformance(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/interview-performance');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get tech stack analysis
+   */
+  async getTechStackAnalysis(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/tech-stack-analysis');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get company performance analytics
+   */
+  async getCompanyPerformance(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/company-performance');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get time trends analytics
+   */
+  async getTimeTrends(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/time-trends');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get recruiter performance analytics
+   */
+  async getRecruiterPerformance(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/recruiter-performance');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get origin comparison analytics
+   */
+  async getOriginComparison(): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/origin-comparison');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get advanced trends with filters
+   */
+  async getAdvancedTrends(params?: {
+    period?: 'week' | 'month';
+    stack?: string;
+    role?: string;
+    company?: string;
+  }): Promise<any> {
+    return this.withRetry(async () => {
+      const response = await this.client.get('/api/analytics/advanced-trends', { params });
       return response.data;
     });
   }

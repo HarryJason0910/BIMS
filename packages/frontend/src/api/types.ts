@@ -8,6 +8,7 @@ export enum BidStatus {
   SUBMITTED = 'SUBMITTED',
   REJECTED = 'REJECTED',
   INTERVIEW_STAGE = 'INTERVIEW_STAGE',
+  INTERVIEW_FAILED = 'INTERVIEW_FAILED',
   CLOSED = 'CLOSED'
 }
 
@@ -16,9 +17,23 @@ export enum ResumeCheckerType {
   RECRUITER = 'RECRUITER'
 }
 
+export enum BidOrigin {
+  LINKEDIN = 'LINKEDIN',
+  BID = 'BID'
+}
+
 export enum InterviewBase {
   BID = 'BID',
   LINKEDIN_CHAT = 'LINKEDIN_CHAT'
+}
+
+export enum InterviewType {
+  HR = 'HR',
+  TECH_INTERVIEW_1 = 'TECH_INTERVIEW_1',
+  TECH_INTERVIEW_2 = 'TECH_INTERVIEW_2',
+  TECH_INTERVIEW_3 = 'TECH_INTERVIEW_3',
+  FINAL_INTERVIEW = 'FINAL_INTERVIEW',
+  CLIENT_INTERVIEW = 'CLIENT_INTERVIEW'
 }
 
 export enum InterviewStatus {
@@ -42,6 +57,8 @@ export interface Bid {
   mainStacks: string[];
   jobDescriptionPath: string;
   resumePath: string;
+  origin: BidOrigin;
+  recruiter?: string;
   date: string;
   status: BidStatus;
   interviewWinning: boolean;
@@ -58,6 +75,8 @@ export interface CreateBidRequest {
   mainStacks: string[];
   jobDescription: string;
   resumeFile: File;
+  origin: BidOrigin;
+  recruiter?: string;
 }
 
 export interface CreateBidResponse {
@@ -90,7 +109,7 @@ export interface Interview {
   role: string;
   recruiter: string;
   attendees: string[];
-  interviewType: string;
+  interviewType: InterviewType;
   date: string;
   status: InterviewStatus;
   detail?: string;
@@ -104,9 +123,9 @@ export interface ScheduleInterviewRequest {
   role?: string;
   recruiter: string;
   attendees: string[];
-  interviewType: string;
+  interviewType: InterviewType;
   date: string;
-  detail?: string;
+  detail?: string; // Optional - can be added later when completing the interview
 }
 
 export interface ScheduleInterviewResponse {
@@ -150,12 +169,16 @@ export interface BidFilters {
   status?: BidStatus;
   dateFrom?: string;
   dateTo?: string;
+  mainStacks?: string[];
 }
 
 export interface InterviewFilters {
   company?: string;
   role?: string;
   status?: InterviewStatus;
+  recruiter?: string;
+  interviewType?: InterviewType;
+  attendees?: string;
   dateFrom?: string;
   dateTo?: string;
 }

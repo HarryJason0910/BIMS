@@ -7,7 +7,7 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import { apiClient } from '../api';
-import { Interview, InterviewFilters, SortOptions, InterviewStatus } from '../api/types';
+import { Interview, InterviewFilters, SortOptions, InterviewStatus, InterviewType } from '../api/types';
 
 interface InterviewListProps {
   filters?: InterviewFilters;
@@ -15,12 +15,33 @@ interface InterviewListProps {
   onInterviewSelect?: (interview: Interview) => void;
 }
 
+// Helper function to get interview stage number and label
+const getInterviewStage = (type: InterviewType): { stage: number; label: string } => {
+  switch (type) {
+    case InterviewType.HR:
+      return { stage: 1, label: 'Stage 1: HR' };
+    case InterviewType.TECH_INTERVIEW_1:
+      return { stage: 2, label: 'Stage 2: Tech 1' };
+    case InterviewType.TECH_INTERVIEW_2:
+      return { stage: 3, label: 'Stage 3: Tech 2' };
+    case InterviewType.TECH_INTERVIEW_3:
+      return { stage: 4, label: 'Stage 4: Tech 3' };
+    case InterviewType.FINAL_INTERVIEW:
+      return { stage: 5, label: 'Stage 5: Final' };
+    case InterviewType.CLIENT_INTERVIEW:
+      return { stage: 6, label: 'Stage 6: Client' };
+    default:
+      return { stage: 0, label: 'Unknown' };
+  }
+};
+
 export const InterviewList: React.FC<InterviewListProps> = ({ 
   filters, 
   sort, 
   onInterviewSelect
 }) => {
   const [expandedInterviewId, setExpandedInterviewId] = React.useState<string | null>(null);
+  const [undoAction, setUndoAction] = React.useState<{ interviewId: string; action: string } | null>(null);
   
   const { data: interviews, isLoading, error } = useQuery({
     queryKey: ['interviews', filters, sort],
@@ -108,8 +129,8 @@ export const InterviewList: React.FC<InterviewListProps> = ({
   const handleAttendInterview = async (interview: Interview, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      setUndoAction({ interviewId: interview.id, action: 'attended' });
       await apiClient.attendInterview(interview.id);
-      // Refresh the interview list
       window.location.reload();
     } catch (error) {
       console.error('Failed to mark interview as attended:', error);
@@ -117,15 +138,39 @@ export const InterviewList: React.FC<InterviewListProps> = ({
     }
   };
 
-  const handleCloseInterview = async (interview: Interview, e: React.MouseEvent) => {
+  const handlePassInterview = async (interview: Interview, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await apiClient.closeInterview(interview.id);
-      // Refresh the interview list
+      setUndoAction({ interviewId: interview.id, action: 'passed' });
+      await apiClient.completeInterview(interview.id, { success: true });
       window.location.reload();
     } catch (error) {
-      console.error('Failed to close interview:', error);
-      alert('Failed to close interview');
+      console.error('Failed to mark interview as passed:', error);
+      alert('Failed to mark interview as passed');
+    }
+  };
+
+  const handleFailInterview = async (interview: Interview, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setUndoAction({ interviewId: interview.id, action: 'failed' });
+      await apiClient.completeInterview(interview.id, { success: false });
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to mark interview as failed:', error);
+      alert('Failed to mark interview as failed');
+    }
+  };
+
+  const handleCancelInterview = async (interview: Interview, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setUndoAction({ interviewId: interview.id, action: 'cancelled' });
+      await apiClient.cancelInterview(interview.id);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to cancel interview:', error);
+      alert('Failed to cancel interview');
     }
   };
 
@@ -155,35 +200,61 @@ export const InterviewList: React.FC<InterviewListProps> = ({
 
   return (
     <Box>
+      {undoAction && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 2 }}
+          onClose={() => setUndoAction(null)}
+        >
+          Interview marked as {undoAction.action}
+        </Alert>
+      )}
+      
       <TableContainer component={Paper}>
-        <Table>
+        <Table sx={{ '& .MuiTableCell-root': { borderRight: '1px solid rgba(224, 224, 224, 1)' } }}>
           <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Company</TableCell>
-              <TableCell>Client</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Recruiter</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>JD</TableCell>
-              <TableCell>Resume</TableCell>
-              <TableCell>Actions</TableCell>
+            <TableRow sx={{ backgroundColor: 'rgba(33, 150, 243, 0.25)' }}>
+              <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Company</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Stage</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Recruiter</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>JD</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Resume</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', borderRight: 'none' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {interviews.map((interview) => (
+            {interviews.map((interview, index) => {
+              const stageInfo = getInterviewStage(interview.interviewType);
+              return (
               <React.Fragment key={interview.id}>
                 <TableRow 
                   hover 
                   onClick={() => handleRowClick(interview)}
-                  sx={{ cursor: 'pointer', backgroundColor: expandedInterviewId === interview.id ? '#f5f5f5' : 'inherit' }}
+                  sx={{ 
+                    cursor: 'pointer', 
+                    backgroundColor: expandedInterviewId === interview.id 
+                      ? '#f5f5f5' 
+                      : index % 2 === 1 
+                        ? 'rgba(33, 150, 243, 0.08)' 
+                        : 'inherit'
+                  }}
                 >
                   <TableCell>{formatDate(interview.date)}</TableCell>
                   <TableCell>{interview.company}</TableCell>
                   <TableCell>{interview.client}</TableCell>
                   <TableCell>{interview.role}</TableCell>
-                  <TableCell>{interview.interviewType}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={stageInfo.label}
+                      color="info"
+                      size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
                   <TableCell>{interview.recruiter}</TableCell>
                   <TableCell>
                     <Chip 
@@ -237,29 +308,58 @@ export const InterviewList: React.FC<InterviewListProps> = ({
                     )}
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    {interview.status === InterviewStatus.SCHEDULED && !isInterviewExpired(interview) && (
-                      <Button
-                        onClick={(e) => handleAttendInterview(interview, e)}
-                        variant="contained"
-                        size="small"
-                        color="primary"
-                      >
-                        Attended
-                      </Button>
-                    )}
-                    {interview.status === InterviewStatus.PENDING && (
-                      <Button
-                        onClick={(e) => handleCloseInterview(interview, e)}
-                        variant="outlined"
-                        size="small"
-                        color="secondary"
-                      >
-                        Close
-                      </Button>
-                    )}
-                    {isInterviewExpired(interview) && (
-                      <Chip label="Expired" color="default" size="small" />
-                    )}
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {interview.status === InterviewStatus.SCHEDULED && !isInterviewExpired(interview) && (
+                        <>
+                          <Button
+                            onClick={(e) => handleAttendInterview(interview, e)}
+                            variant="contained"
+                            size="small"
+                            color="primary"
+                          >
+                            Attended
+                          </Button>
+                          <Button
+                            onClick={(e) => handleCancelInterview(interview, e)}
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      {interview.status === InterviewStatus.PENDING && (
+                        <>
+                          <Button
+                            onClick={(e) => handlePassInterview(interview, e)}
+                            variant="contained"
+                            size="small"
+                            color="success"
+                          >
+                            Passed
+                          </Button>
+                          <Button
+                            onClick={(e) => handleFailInterview(interview, e)}
+                            variant="contained"
+                            size="small"
+                            color="error"
+                          >
+                            Failed
+                          </Button>
+                        </>
+                      )}
+                      {isInterviewExpired(interview) && (
+                        <Chip label="Expired" color="default" size="small" />
+                      )}
+                      {(interview.status === InterviewStatus.COMPLETED_SUCCESS || 
+                        interview.status === InterviewStatus.COMPLETED_FAILURE ||
+                        interview.status === InterviewStatus.CANCELLED) && (
+                        <Typography variant="body2" color="text.secondary">
+                          No actions available
+                        </Typography>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
                 {expandedInterviewId === interview.id && interview.detail && (
@@ -277,7 +377,8 @@ export const InterviewList: React.FC<InterviewListProps> = ({
                   </TableRow>
                 )}
               </React.Fragment>
-            ))}
+            );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

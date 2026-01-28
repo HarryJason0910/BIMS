@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { 
-  TextField, Button, Box, Typography, Alert, Paper, Link as MuiLink, Grid
+  TextField, Button, Box, Typography, Alert, Paper, Link as MuiLink, Grid,
+  List, ListItem, ListItemText, ListItemButton, Chip, CircularProgress, Divider
 } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { apiClient } from '../api';
 import { Bid, RebidRequest } from '../api/types';
 
@@ -16,6 +19,13 @@ export const RebidForm: React.FC<RebidFormProps> = ({ bid, onSuccess, onCancel }
   const queryClient = useQueryClient();
   const [jobDescription, setJobDescription] = useState<string>(bid.jobDescriptionPath);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
+
+  // Fetch candidate resumes based on stack matching
+  const { data: candidateData, isLoading: loadingCandidates } = useQuery({
+    queryKey: ['candidateResumes', bid.id],
+    queryFn: () => apiClient.getCandidateResumes(bid.id)
+  });
 
   const rebidMutation = useMutation({
     mutationFn: (data: RebidRequest) => apiClient.rebid(bid.id, data),
@@ -43,6 +53,38 @@ export const RebidForm: React.FC<RebidFormProps> = ({ bid, onSuccess, onCancel }
         return;
       }
       setResumeFile(file);
+      setSelectedCandidate(null); // Clear candidate selection when uploading new file
+    }
+  };
+
+  const handleDownloadCandidate = async (resumePath: string) => {
+    try {
+      const blob = await apiClient.downloadResumeByPath(resumePath);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = resumePath.split('/').pop() || 'resume.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download resume');
+    }
+  };
+
+  const handleSelectCandidate = async (resumePath: string) => {
+    try {
+      // Download the resume and convert to File object
+      const blob = await apiClient.downloadResumeByPath(resumePath);
+      const fileName = resumePath.split('/').pop() || 'resume.pdf';
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      setResumeFile(file);
+      setSelectedCandidate(resumePath);
+    } catch (error) {
+      console.error('Failed to select candidate:', error);
+      alert('Failed to select candidate resume');
     }
   };
 
@@ -81,6 +123,73 @@ export const RebidForm: React.FC<RebidFormProps> = ({ bid, onSuccess, onCancel }
 
       <Box component="form" onSubmit={handleSubmit} noValidate>
         <Grid container spacing={2}>
+          {/* Candidate Resumes Section */}
+          {candidateData && candidateData.candidates.length > 0 && (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2, bgcolor: 'info.lighter' }}>
+                <Typography variant="h6" gutterBottom>
+                  Candidate Resumes (Based on Stack Matching)
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Select a resume from previous bids with matching tech stacks, or upload a new one below.
+                </Typography>
+                {loadingCandidates ? (
+                  <Box display="flex" justifyContent="center" p={2}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : (
+                  <List sx={{ maxHeight: '400px', overflow: 'auto' }}>
+                    {candidateData.candidates.map((candidate, index) => (
+                      <React.Fragment key={candidate.resumePath}>
+                        <ListItem
+                          disablePadding
+                          secondaryAction={
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                onClick={() => handleDownloadCandidate(candidate.resumePath)}
+                              >
+                                Download
+                              </Button>
+                              <Button
+                                size="small"
+                                variant={selectedCandidate === candidate.resumePath ? 'contained' : 'outlined'}
+                                startIcon={selectedCandidate === candidate.resumePath ? <CheckCircleIcon /> : null}
+                                onClick={() => handleSelectCandidate(candidate.resumePath)}
+                              >
+                                {selectedCandidate === candidate.resumePath ? 'Selected' : 'Use This'}
+                              </Button>
+                            </Box>
+                          }
+                        >
+                          <ListItemButton onClick={() => handleSelectCandidate(candidate.resumePath)}>
+                            <ListItemText
+                              primary={candidate.folderName}
+                              secondary={
+                                <Box sx={{ mt: 0.5 }}>
+                                  <Typography variant="caption" display="block">
+                                    Matching Stacks ({candidate.matchCount}):
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                                    {candidate.matchingStacks.map((stack, idx) => (
+                                      <Chip key={idx} label={stack} size="small" color="primary" />
+                                    ))}
+                                  </Box>
+                                </Box>
+                              }
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                        {index < candidateData.candidates.length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                )}
+              </Paper>
+            </Grid>
+          )}
+
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -96,7 +205,9 @@ export const RebidForm: React.FC<RebidFormProps> = ({ bid, onSuccess, onCancel }
           <Grid item xs={12}>
             <Box>
               <Typography variant="body2" gutterBottom>
-                New Resume (PDF) *
+                {candidateData && candidateData.candidates.length > 0 
+                  ? 'Or Upload New Resume (PDF)' 
+                  : 'New Resume (PDF) *'}
               </Typography>
               <Button
                 variant="outlined"

@@ -19,6 +19,8 @@ interface BidListProps {
 }
 
 export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, onRebid }) => {
+  const [undoAction, setUndoAction] = React.useState<{ bidId: string; previousStatus: BidStatus } | null>(null);
+  
   const { data: bids, isLoading, error } = useQuery({
     queryKey: ['bids', filters, sort],
     queryFn: () => apiClient.getBids(filters, sort)
@@ -26,6 +28,33 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleMarkRejected = async (bid: Bid) => {
+    try {
+      // Store previous status for undo
+      setUndoAction({ bidId: bid.id, previousStatus: bid.status });
+      
+      await apiClient.markBidRejected(bid.id);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to mark bid as rejected:', error);
+      alert('Failed to mark bid as rejected');
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!undoAction) return;
+    
+    try {
+      // Restore previous status
+      await apiClient.updateBid(undoAction.bidId, { status: undoAction.previousStatus });
+      setUndoAction(null);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to undo action:', error);
+      alert('Failed to undo action');
+    }
   };
 
   const getStatusColor = (status: BidStatus): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
@@ -38,6 +67,8 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
         return 'error';
       case BidStatus.INTERVIEW_STAGE:
         return 'success';
+      case BidStatus.INTERVIEW_FAILED:
+        return 'warning';
       case BidStatus.CLOSED:
         return 'default';
       default:
@@ -109,29 +140,49 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
 
   return (
     <Box>
+      {undoAction && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleUndo}>
+              UNDO
+            </Button>
+          }
+          onClose={() => setUndoAction(null)}
+        >
+          Bid marked as rejected
+        </Alert>
+      )}
+      
       <TableContainer component={Paper}>
-        <Table>
+        <Table sx={{ '& .MuiTableCell-root': { borderRight: '1px solid rgba(224, 224, 224, 1)' } }}>
           <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Company</TableCell>
-              <TableCell>Client</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell sx={{ width: 160 }}>Status</TableCell>
-              <TableCell>Interview</TableCell>
-              <TableCell>Resume Checker</TableCell>
-              <TableCell>JD</TableCell>
-              <TableCell>Resume</TableCell>
-              <TableCell>Actions</TableCell>
+            <TableRow sx={{ backgroundColor: 'rgba(33, 150, 243, 0.25)' }}>
+              <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Company</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Origin</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Recruiter</TableCell>
+              <TableCell sx={{ width: 160, fontWeight: 'bold' }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Interview</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Resume Checker</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>JD</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Resume</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', borderRight: 'none' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {bids.map((bid) => (
+            {bids.map((bid, index) => (
               <TableRow 
                 key={bid.id} 
                 hover 
                 onClick={() => onBidSelect?.(bid)}
-                sx={{ cursor: 'pointer' }}
+                sx={{ 
+                  cursor: 'pointer',
+                  backgroundColor: index % 2 === 1 ? 'rgba(33, 150, 243, 0.08)' : 'inherit'
+                }}
               >
                 <TableCell>{formatDate(bid.date)}</TableCell>
                 <TableCell>
@@ -148,6 +199,14 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
                 </TableCell>
                 <TableCell>{bid.client}</TableCell>
                 <TableCell>{bid.role}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={bid.origin} 
+                    color={bid.origin === 'LINKEDIN' ? 'primary' : 'default'}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>{bid.recruiter || '-'}</TableCell>
                 <TableCell sx={{ width: 160 }}>
                   <Chip 
                     label={bid.status} 
@@ -232,17 +291,33 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
                   </ButtonGroup>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRebid?.(bid);
-                    }}
-                    disabled={bid.status !== BidStatus.REJECTED}
-                    variant="outlined"
-                    size="small"
-                  >
-                    Rebid
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    {(bid.status === BidStatus.NEW || bid.status === BidStatus.SUBMITTED) && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkRejected(bid);
+                        }}
+                        variant="contained"
+                        size="small"
+                        color="error"
+                      >
+                        Rejected
+                      </Button>
+                    )}
+                    {bid.status === BidStatus.REJECTED && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRebid?.(bid);
+                        }}
+                        variant="outlined"
+                        size="small"
+                      >
+                        Rebid
+                      </Button>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}

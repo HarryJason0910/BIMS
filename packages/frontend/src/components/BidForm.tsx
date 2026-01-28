@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { 
-  TextField, Button, Box, Typography, Alert, Chip, Stack, Grid
+  TextField, Button, Box, Typography, Alert, Chip, Stack, Grid, FormControl, InputLabel, Select, MenuItem, Autocomplete
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import { apiClient } from '../api';
-import { CreateBidRequest } from '../api/types';
+import { CreateBidRequest, BidOrigin } from '../api/types';
 
 interface BidFormProps {
   onSuccess?: () => void;
@@ -20,10 +19,17 @@ export const BidForm: React.FC<BidFormProps> = ({ onSuccess, onCancel }) => {
     client: '',
     role: '',
     mainStacks: [],
-    jobDescription: ''
+    jobDescription: '',
+    origin: BidOrigin.BID,
+    recruiter: ''
   });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [stackInput, setStackInput] = useState('');
+
+  // Fetch available tech stacks
+  const { data: availableStacks = [] } = useQuery({
+    queryKey: ['techStacks'],
+    queryFn: () => apiClient.getTechStacks()
+  });
 
   const createBidMutation = useMutation({
     mutationFn: (data: CreateBidRequest) => apiClient.createBid(data),
@@ -61,25 +67,11 @@ export const BidForm: React.FC<BidFormProps> = ({ onSuccess, onCancel }) => {
     });
   };
 
-  const handleAddStack = () => {
-    if (stackInput.trim()) {
-      setFormData({
-        ...formData,
-        mainStacks: [...formData.mainStacks, stackInput.trim()]
-      });
-      setStackInput('');
-    }
-  };
 
-  const handleRemoveStack = (stackToRemove: string) => {
-    setFormData({
-      ...formData,
-      mainStacks: formData.mainStacks.filter(stack => stack !== stackToRemove)
-    });
-  };
 
   const isValid = formData.link && formData.company && formData.client && 
-                  formData.role && formData.jobDescription && resumeFile;
+                  formData.role && formData.jobDescription && resumeFile &&
+                  (formData.origin === BidOrigin.BID || (formData.origin === BidOrigin.LINKEDIN && formData.recruiter));
 
   return (
     <Box>
@@ -135,42 +127,64 @@ export const BidForm: React.FC<BidFormProps> = ({ onSuccess, onCancel }) => {
             />
           </Grid>
 
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Origin</InputLabel>
+              <Select
+                name="origin"
+                value={formData.origin}
+                label="Origin"
+                onChange={(e) => setFormData({ ...formData, origin: e.target.value as BidOrigin, recruiter: '' })}
+              >
+                <MenuItem value={BidOrigin.BID}>Bid</MenuItem>
+                <MenuItem value={BidOrigin.LINKEDIN}>LinkedIn</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Recruiter"
+              name="recruiter"
+              value={formData.recruiter}
+              onChange={handleChange}
+              required={formData.origin === BidOrigin.LINKEDIN}
+              disabled={formData.origin === BidOrigin.BID}
+              placeholder={formData.origin === BidOrigin.LINKEDIN ? "Recruiter name" : "Not applicable"}
+            />
+          </Grid>
+
           <Grid item xs={12}>
-            <Box>
-              <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+            <Autocomplete
+              multiple
+              options={availableStacks}
+              value={formData.mainStacks}
+              onChange={(_, newValue) => {
+                setFormData({
+                  ...formData,
+                  mainStacks: newValue
+                });
+              }}
+              renderInput={(params) => (
                 <TextField
-                  fullWidth
+                  {...params}
                   label="Main Stacks"
-                  value={stackInput}
-                  onChange={(e) => setStackInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddStack();
-                    }
-                  }}
-                  placeholder="Add a technology stack"
+                  placeholder="Select tech stacks"
+                  required={formData.mainStacks.length === 0}
                 />
-                <Button 
-                  variant="outlined" 
-                  onClick={handleAddStack}
-                  startIcon={<AddIcon />}
-                >
-                  Add
-                </Button>
-              </Box>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {formData.mainStacks.map((stack, index) => (
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
                   <Chip
-                    key={index}
-                    label={stack}
-                    onDelete={() => handleRemoveStack(stack)}
+                    label={option}
+                    {...getTagProps({ index })}
                     color="primary"
-                    sx={{ mb: 1 }}
+                    size="small"
                   />
-                ))}
-              </Stack>
-            </Box>
+                ))
+              }
+            />
           </Grid>
 
           <Grid item xs={12}>

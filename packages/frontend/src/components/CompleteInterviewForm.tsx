@@ -107,13 +107,14 @@ export const CompleteInterviewForm: React.FC<CompleteInterviewFormProps> = ({
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Completion Details"
+              label="Interview Details (Notes)"
               name="detail"
               value={formData.detail}
               onChange={handleChange}
               multiline
               rows={6}
-              placeholder="Add notes about the interview outcome, feedback, next steps, etc."
+              placeholder="Add notes about the interview outcome, feedback, next steps, what was discussed, etc."
+              helperText="Add or edit details about this interview"
             />
           </Grid>
 
