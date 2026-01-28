@@ -9,10 +9,15 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
-  envPrefix: ['VITE_', 'TAURI_'],
+  base: './', // Important for Electron
   build: {
     target: ['es2022', 'chrome100', 'safari13'],
-    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
-    sourcemap: !!process.env.TAURI_DEBUG,
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
   },
 });

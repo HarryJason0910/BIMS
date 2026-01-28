@@ -1,15 +1,17 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Paper, Chip, CircularProgress, Alert, Button, Box, Typography, IconButton, ButtonGroup, Link 
+  Paper, Chip, CircularProgress, Alert, Button, Box, Typography, IconButton, ButtonGroup, Link, Snackbar,
+  Select, MenuItem, FormControl
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { apiClient } from '../api';
-import { Bid, BidFilters, SortOptions, BidStatus } from '../api/types';
+import { Bid, BidFilters, SortOptions, BidStatus, ResumeCheckerType, RejectionReason } from '../api/types';
+import { RejectionReasonModal } from './RejectionReasonModal';
 
 interface BidListProps {
   filters?: BidFilters;
@@ -20,23 +22,49 @@ interface BidListProps {
 
 export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, onRebid }) => {
   const [undoAction, setUndoAction] = React.useState<{ bidId: string; previousStatus: BidStatus } | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = React.useState(false);
+  const [rejectionModalOpen, setRejectionModalOpen] = React.useState(false);
+  const [selectedBidForRejection, setSelectedBidForRejection] = React.useState<Bid | null>(null);
+  const queryClient = useQueryClient();
   
   const { data: bids, isLoading, error } = useQuery({
     queryKey: ['bids', filters, sort],
     queryFn: () => apiClient.getBids(filters, sort)
   });
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+  // Helper function to check if rebid is allowed for a rejected bid
+  const canRebid = React.useCallback((bid: Bid): boolean => {
+    // Cannot rebid if this bid has already been rebid
+    if (bid.hasBeenRebid) {
+      return false;
+    }
+    
+    return true;
+  }, []);
 
-  const handleMarkRejected = async (bid: Bid) => {
+  const formatDate = React.useCallback((dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  }, []);
+
+  const handleMarkRejectedClick = React.useCallback((bid: Bid) => {
+    setSelectedBidForRejection(bid);
+    setRejectionModalOpen(true);
+  }, []);
+
+  const handleMarkRejected = async (reason: RejectionReason) => {
+    if (!selectedBidForRejection) return;
+    
     try {
       // Store previous status for undo
-      setUndoAction({ bidId: bid.id, previousStatus: bid.status });
+      setUndoAction({ bidId: selectedBidForRejection.id, previousStatus: selectedBidForRejection.status });
+      setSnackbarOpen(true);
       
-      await apiClient.markBidRejected(bid.id);
-      window.location.reload();
+      await apiClient.markBidRejected(selectedBidForRejection.id, reason);
+      setRejectionModalOpen(false);
+      setSelectedBidForRejection(null);
+      
+      // Invalidate queries to refresh data without full page reload
+      queryClient.invalidateQueries({ queryKey: ['bids'] });
     } catch (error) {
       console.error('Failed to mark bid as rejected:', error);
       alert('Failed to mark bid as rejected');
@@ -50,10 +78,28 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
       // Restore previous status
       await apiClient.updateBid(undoAction.bidId, { status: undoAction.previousStatus });
       setUndoAction(null);
-      window.location.reload();
+      setSnackbarOpen(false);
+      
+      // Invalidate queries to refresh data without full page reload
+      queryClient.invalidateQueries({ queryKey: ['bids'] });
     } catch (error) {
       console.error('Failed to undo action:', error);
       alert('Failed to undo action');
+    }
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+    setUndoAction(null);
+  };
+
+  const handleResumeCheckerChange = async (bidId: string, resumeChecker: ResumeCheckerType | null) => {
+    try {
+      await apiClient.updateBid(bidId, { resumeChecker: resumeChecker || undefined });
+      queryClient.invalidateQueries({ queryKey: ['bids'] });
+    } catch (error) {
+      console.error('Failed to update resume checker:', error);
+      alert('Failed to update resume checker');
     }
   };
 
@@ -140,20 +186,18 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
 
   return (
     <Box>
-      {undoAction && (
-        <Alert 
-          severity="info" 
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={handleUndo}>
-              UNDO
-            </Button>
-          }
-          onClose={() => setUndoAction(null)}
-        >
-          Bid marked as rejected
-        </Alert>
-      )}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        message="Bid marked as rejected"
+        action={
+          <Button color="inherit" size="small" onClick={handleUndo}>
+            UNDO
+          </Button>
+        }
+      />
       
       <TableContainer component={Paper}>
         <Table sx={{ '& .MuiTableCell-root': { borderRight: '1px solid rgba(224, 224, 224, 1)' } }}>
@@ -165,7 +209,7 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
               <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Origin</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Recruiter</TableCell>
-              <TableCell sx={{ width: 160, fontWeight: 'bold' }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Interview</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Resume Checker</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>JD</TableCell>
@@ -231,14 +275,25 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
                     />
                   )}
                 </TableCell>
-                <TableCell>
-                  {bid.resumeChecker && (
-                    <Chip 
-                      label={bid.resumeChecker} 
-                      color={bid.resumeChecker === 'ATS' ? 'warning' : 'info'}
-                      size="small"
-                    />
-                  )}
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <FormControl size="small" fullWidth>
+                    <Select
+                      value={bid.resumeChecker || ''}
+                      onChange={(e) => handleResumeCheckerChange(bid.id, e.target.value as ResumeCheckerType || null)}
+                      displayEmpty
+                      sx={{ minWidth: 120 }}
+                    >
+                      <MenuItem value="">
+                        <em>Not set</em>
+                      </MenuItem>
+                      <MenuItem value={ResumeCheckerType.ATS}>
+                        <Chip label="ATS" color="warning" size="small" />
+                      </MenuItem>
+                      <MenuItem value={ResumeCheckerType.RECRUITER}>
+                        <Chip label="Recruiter" color="info" size="small" />
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
                 </TableCell>
                 <TableCell>
                   <ButtonGroup size="small" variant="outlined">
@@ -296,7 +351,7 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleMarkRejected(bid);
+                          handleMarkRejectedClick(bid);
                         }}
                         variant="contained"
                         size="small"
@@ -309,10 +364,14 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onRebid?.(bid);
+                          if (canRebid(bid)) {
+                            onRebid?.(bid);
+                          }
                         }}
                         variant="outlined"
                         size="small"
+                        disabled={!canRebid(bid)}
+                        title={!canRebid(bid) ? 'Cannot rebid - this bid has already been rebid' : 'Rebid with new resume'}
                       >
                         Rebid
                       </Button>
@@ -337,6 +396,17 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
           ))}
         </Paper>
       )}
+
+      <RejectionReasonModal
+        open={rejectionModalOpen}
+        onClose={() => {
+          setRejectionModalOpen(false);
+          setSelectedBidForRejection(null);
+        }}
+        onConfirm={handleMarkRejected}
+        companyName={selectedBidForRejection?.company || ''}
+        roleName={selectedBidForRejection?.role || ''}
+      />
     </Box>
   );
 };

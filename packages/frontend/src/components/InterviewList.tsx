@@ -1,18 +1,21 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Paper, Chip, CircularProgress, Alert, Button, Box, Typography, IconButton, ButtonGroup 
+  Paper, Chip, CircularProgress, Alert, Button, Box, Typography, IconButton, ButtonGroup, Snackbar 
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import { apiClient } from '../api';
-import { Interview, InterviewFilters, SortOptions, InterviewStatus, InterviewType } from '../api/types';
+import { Interview, InterviewFilters, SortOptions, InterviewStatus, InterviewType, InterviewFailureReason, CancellationReason } from '../api/types';
+import { InterviewFailureReasonModal } from './InterviewFailureReasonModal';
+import { InterviewCancellationReasonModal } from './InterviewCancellationReasonModal';
 
 interface InterviewListProps {
   filters?: InterviewFilters;
   sort?: SortOptions;
   onInterviewSelect?: (interview: Interview) => void;
+  onScheduleNext?: (interview: Interview) => void;
 }
 
 // Helper function to get interview stage number and label
@@ -35,13 +38,41 @@ const getInterviewStage = (type: InterviewType): { stage: number; label: string 
   }
 };
 
+// Helper function to get next interview type
+const getNextInterviewType = (currentType: InterviewType): InterviewType | null => {
+  switch (currentType) {
+    case InterviewType.HR:
+      return InterviewType.TECH_INTERVIEW_1;
+    case InterviewType.TECH_INTERVIEW_1:
+      return InterviewType.TECH_INTERVIEW_2;
+    case InterviewType.TECH_INTERVIEW_2:
+      return InterviewType.TECH_INTERVIEW_3;
+    case InterviewType.TECH_INTERVIEW_3:
+      return InterviewType.FINAL_INTERVIEW;
+    case InterviewType.FINAL_INTERVIEW:
+      return InterviewType.CLIENT_INTERVIEW;
+    case InterviewType.CLIENT_INTERVIEW:
+      return null; // No next stage after client interview
+    default:
+      return null;
+  }
+};
+
 export const InterviewList: React.FC<InterviewListProps> = ({ 
   filters, 
   sort, 
-  onInterviewSelect
+  onInterviewSelect,
+  onScheduleNext
 }) => {
   const [expandedInterviewId, setExpandedInterviewId] = React.useState<string | null>(null);
-  const [undoAction, setUndoAction] = React.useState<{ interviewId: string; action: string } | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = React.useState<string>('');
+  const [snackbarOpen, setSnackbarOpen] = React.useState(false);
+  const [failureModalOpen, setFailureModalOpen] = React.useState(false);
+  const [selectedInterviewForFailure, setSelectedInterviewForFailure] = React.useState<Interview | null>(null);
+  const [cancellationModalOpen, setCancellationModalOpen] = React.useState(false);
+  const [selectedInterviewForCancellation, setSelectedInterviewForCancellation] = React.useState<Interview | null>(null);
+  const [processingInterviewId, setProcessingInterviewId] = React.useState<string | null>(null);
+  const queryClient = useQueryClient();
   
   const { data: interviews, isLoading, error } = useQuery({
     queryKey: ['interviews', filters, sort],
@@ -92,7 +123,15 @@ export const InterviewList: React.FC<InterviewListProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   const getStatusColor = (status: InterviewStatus): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
@@ -120,57 +159,152 @@ export const InterviewList: React.FC<InterviewListProps> = ({
 
   const isInterviewExpired = (interview: Interview): boolean => {
     const interviewDate = new Date(interview.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    interviewDate.setHours(0, 0, 0, 0);
-    return interviewDate < today && interview.status === InterviewStatus.SCHEDULED;
+    const now = new Date();
+    return interviewDate < now && interview.status === InterviewStatus.SCHEDULED;
   };
 
   const handleAttendInterview = async (interview: Interview, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Prevent double submission
+    if (processingInterviewId === interview.id) return;
+    
+    setProcessingInterviewId(interview.id);
+    
     try {
-      setUndoAction({ interviewId: interview.id, action: 'attended' });
       await apiClient.attendInterview(interview.id);
-      window.location.reload();
+      
+      setSnackbarMessage('Interview marked as attended');
+      setSnackbarOpen(true);
+      
+      // Invalidate queries to refresh data without full page reload
+      await queryClient.invalidateQueries({ queryKey: ['interviews'] });
+      await queryClient.invalidateQueries({ queryKey: ['bids'] });
     } catch (error) {
       console.error('Failed to mark interview as attended:', error);
-      alert('Failed to mark interview as attended');
+      alert(`Failed to mark interview as attended: ${(error as Error).message}`);
+    } finally {
+      setProcessingInterviewId(null);
     }
   };
 
   const handlePassInterview = async (interview: Interview, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Prevent double submission
+    if (processingInterviewId === interview.id) return;
+    
+    setProcessingInterviewId(interview.id);
+    
     try {
-      setUndoAction({ interviewId: interview.id, action: 'passed' });
       await apiClient.completeInterview(interview.id, { success: true });
-      window.location.reload();
+      
+      setSnackbarMessage('Interview marked as passed');
+      setSnackbarOpen(true);
+      
+      // Invalidate queries to refresh data without full page reload
+      await queryClient.invalidateQueries({ queryKey: ['interviews'] });
+      await queryClient.invalidateQueries({ queryKey: ['bids'] });
     } catch (error) {
       console.error('Failed to mark interview as passed:', error);
-      alert('Failed to mark interview as passed');
+      alert(`Failed to mark interview as passed: ${(error as Error).message}`);
+    } finally {
+      setProcessingInterviewId(null);
     }
   };
 
-  const handleFailInterview = async (interview: Interview, e: React.MouseEvent) => {
+  const handleFailInterviewClick = (interview: Interview, e: React.MouseEvent) => {
     e.stopPropagation();
+    setSelectedInterviewForFailure(interview);
+    setFailureModalOpen(true);
+  };
+
+  const handleFailInterview = async (reason: InterviewFailureReason) => {
+    if (!selectedInterviewForFailure) return;
+    
+    // Prevent double submission
+    if (processingInterviewId === selectedInterviewForFailure.id) return;
+    
+    setProcessingInterviewId(selectedInterviewForFailure.id);
+    
     try {
-      setUndoAction({ interviewId: interview.id, action: 'failed' });
-      await apiClient.completeInterview(interview.id, { success: false });
-      window.location.reload();
+      await apiClient.completeInterview(selectedInterviewForFailure.id, { 
+        success: false,
+        failureReason: reason
+      });
+      
+      // Close modal and show success message first
+      setFailureModalOpen(false);
+      setSelectedInterviewForFailure(null);
+      setSnackbarMessage('Interview marked as failed');
+      setSnackbarOpen(true);
+      
+      // Invalidate queries to refresh data without full page reload
+      await queryClient.invalidateQueries({ queryKey: ['interviews'] });
+      await queryClient.invalidateQueries({ queryKey: ['bids'] });
     } catch (error) {
       console.error('Failed to mark interview as failed:', error);
-      alert('Failed to mark interview as failed');
+      alert(`Failed to mark interview as failed: ${(error as Error).message}`);
+      // Don't close modal on error so user can retry
+    } finally {
+      setProcessingInterviewId(null);
     }
   };
 
-  const handleCancelInterview = async (interview: Interview, e: React.MouseEvent) => {
+  const handleCancelInterviewClick = (interview: Interview, e: React.MouseEvent) => {
     e.stopPropagation();
+    setSelectedInterviewForCancellation(interview);
+    setCancellationModalOpen(true);
+  };
+
+  const handleCancelInterview = async (reason: CancellationReason) => {
+    if (!selectedInterviewForCancellation) return;
+    
+    // Prevent double submission
+    if (processingInterviewId === selectedInterviewForCancellation.id) return;
+    
+    setProcessingInterviewId(selectedInterviewForCancellation.id);
+    
     try {
-      setUndoAction({ interviewId: interview.id, action: 'cancelled' });
-      await apiClient.cancelInterview(interview.id);
-      window.location.reload();
+      await apiClient.cancelInterview(selectedInterviewForCancellation.id, reason);
+      
+      // Close modal first
+      setCancellationModalOpen(false);
+      
+      // If rescheduled, trigger the schedule form immediately with the interview data
+      if (reason === CancellationReason.RESCHEDULED) {
+        setSnackbarMessage('Interview cancelled for rescheduling');
+        setSnackbarOpen(true);
+        
+        // Create a copy of the interview with updated status and cancellation reason
+        const rescheduledInterview: Interview = {
+          ...selectedInterviewForCancellation,
+          status: InterviewStatus.CANCELLED,
+          cancellationReason: CancellationReason.RESCHEDULED
+        };
+        
+        // Trigger reschedule with the updated interview object
+        onScheduleNext?.(rescheduledInterview);
+        
+        // Invalidate queries after opening the form
+        await queryClient.invalidateQueries({ queryKey: ['interviews'] });
+        await queryClient.invalidateQueries({ queryKey: ['bids'] });
+      } else {
+        setSnackbarMessage('Interview cancelled - role closed');
+        setSnackbarOpen(true);
+        
+        // Invalidate queries to refresh data
+        await queryClient.invalidateQueries({ queryKey: ['interviews'] });
+        await queryClient.invalidateQueries({ queryKey: ['bids'] });
+      }
+      
+      setSelectedInterviewForCancellation(null);
     } catch (error) {
       console.error('Failed to cancel interview:', error);
-      alert('Failed to cancel interview');
+      alert(`Failed to cancel interview: ${(error as Error).message}`);
+      // Don't close modal on error so user can retry
+    } finally {
+      setProcessingInterviewId(null);
     }
   };
 
@@ -200,21 +334,19 @@ export const InterviewList: React.FC<InterviewListProps> = ({
 
   return (
     <Box>
-      {undoAction && (
-        <Alert 
-          severity="info" 
-          sx={{ mb: 2 }}
-          onClose={() => setUndoAction(null)}
-        >
-          Interview marked as {undoAction.action}
-        </Alert>
-      )}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        message={snackbarMessage}
+      />
       
       <TableContainer component={Paper}>
         <Table sx={{ '& .MuiTableCell-root': { borderRight: '1px solid rgba(224, 224, 224, 1)' } }}>
           <TableHead>
             <TableRow sx={{ backgroundColor: 'rgba(33, 150, 243, 0.25)' }}>
-              <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Date & Time</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Company</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
@@ -316,14 +448,16 @@ export const InterviewList: React.FC<InterviewListProps> = ({
                             variant="contained"
                             size="small"
                             color="primary"
+                            disabled={processingInterviewId === interview.id}
                           >
-                            Attended
+                            {processingInterviewId === interview.id ? 'Processing...' : 'Attended'}
                           </Button>
                           <Button
-                            onClick={(e) => handleCancelInterview(interview, e)}
+                            onClick={(e) => handleCancelInterviewClick(interview, e)}
                             variant="outlined"
                             size="small"
                             color="error"
+                            disabled={processingInterviewId === interview.id}
                           >
                             Cancel
                           </Button>
@@ -336,14 +470,16 @@ export const InterviewList: React.FC<InterviewListProps> = ({
                             variant="contained"
                             size="small"
                             color="success"
+                            disabled={processingInterviewId === interview.id}
                           >
-                            Passed
+                            {processingInterviewId === interview.id ? 'Processing...' : 'Passed'}
                           </Button>
                           <Button
-                            onClick={(e) => handleFailInterview(interview, e)}
+                            onClick={(e) => handleFailInterviewClick(interview, e)}
                             variant="contained"
                             size="small"
                             color="error"
+                            disabled={processingInterviewId === interview.id}
                           >
                             Failed
                           </Button>
@@ -355,9 +491,32 @@ export const InterviewList: React.FC<InterviewListProps> = ({
                       {(interview.status === InterviewStatus.COMPLETED_SUCCESS || 
                         interview.status === InterviewStatus.COMPLETED_FAILURE ||
                         interview.status === InterviewStatus.CANCELLED) && (
-                        <Typography variant="body2" color="text.secondary">
-                          No actions available
-                        </Typography>
+                        <>
+                          {interview.status === InterviewStatus.COMPLETED_SUCCESS && getNextInterviewType(interview.interviewType) && (
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onScheduleNext?.(interview);
+                              }}
+                              variant="contained"
+                              size="small"
+                              color="primary"
+                              disabled={interview.hasScheduledNext}
+                            >
+                              {interview.hasScheduledNext ? 'Next Scheduled' : 'Schedule Next'}
+                            </Button>
+                          )}
+                          {interview.status === InterviewStatus.COMPLETED_SUCCESS && !getNextInterviewType(interview.interviewType) && (
+                            <Typography variant="body2" color="success.main" fontWeight="bold">
+                              Process Complete!
+                            </Typography>
+                          )}
+                          {(interview.status === InterviewStatus.COMPLETED_FAILURE || interview.status === InterviewStatus.CANCELLED) && (
+                            <Typography variant="body2" color="text.secondary">
+                              No actions available
+                            </Typography>
+                          )}
+                        </>
                       )}
                     </Box>
                   </TableCell>
@@ -382,6 +541,29 @@ export const InterviewList: React.FC<InterviewListProps> = ({
           </TableBody>
         </Table>
       </TableContainer>
+
+      <InterviewFailureReasonModal
+        open={failureModalOpen}
+        onClose={() => {
+          setFailureModalOpen(false);
+          setSelectedInterviewForFailure(null);
+        }}
+        onConfirm={handleFailInterview}
+        interviewType={selectedInterviewForFailure?.interviewType || InterviewType.HR}
+        companyName={selectedInterviewForFailure?.company || ''}
+        roleName={selectedInterviewForFailure?.role || ''}
+      />
+
+      <InterviewCancellationReasonModal
+        open={cancellationModalOpen}
+        onClose={() => {
+          setCancellationModalOpen(false);
+          setSelectedInterviewForCancellation(null);
+        }}
+        onConfirm={handleCancelInterview}
+        companyName={selectedInterviewForCancellation?.company || ''}
+        roleName={selectedInterviewForCancellation?.role || ''}
+      />
     </Box>
   );
 };

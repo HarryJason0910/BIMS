@@ -4,7 +4,7 @@ import {
   TextField, Button, Box, Typography, Alert, Chip, Stack, Grid, FormControl, InputLabel, Select, MenuItem, Autocomplete
 } from '@mui/material';
 import { apiClient } from '../api';
-import { CreateBidRequest, BidOrigin } from '../api/types';
+import { CreateBidRequest, BidOrigin, Role } from '../api/types';
 
 interface BidFormProps {
   onSuccess?: () => void;
@@ -117,14 +117,21 @@ export const BidForm: React.FC<BidFormProps> = ({ onSuccess, onCancel }) => {
           </Grid>
 
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              required
-            />
+            <FormControl fullWidth required>
+              <InputLabel>Role</InputLabel>
+              <Select
+                name="role"
+                value={formData.role}
+                label="Role"
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              >
+                {Object.values(Role).map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {role}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
 
           <Grid item xs={12} sm={6}>

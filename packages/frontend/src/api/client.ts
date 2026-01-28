@@ -108,29 +108,28 @@ export class ApiClient {
 
   /**
    * Create a new bid
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async createBid(request: CreateBidRequest): Promise<CreateBidResponse> {
-    return this.withRetry(async () => {
-      const formData = new FormData();
-      formData.append('link', request.link);
-      formData.append('company', request.company);
-      formData.append('client', request.client);
-      formData.append('role', request.role);
-      formData.append('mainStacks', JSON.stringify(request.mainStacks));
-      formData.append('jobDescription', request.jobDescription);
-      formData.append('resume', request.resumeFile);
-      formData.append('origin', request.origin);
-      if (request.recruiter) {
-        formData.append('recruiter', request.recruiter);
-      }
+    const formData = new FormData();
+    formData.append('link', request.link);
+    formData.append('company', request.company);
+    formData.append('client', request.client);
+    formData.append('role', request.role);
+    formData.append('mainStacks', JSON.stringify(request.mainStacks));
+    formData.append('jobDescription', request.jobDescription);
+    formData.append('resume', request.resumeFile);
+    formData.append('origin', request.origin);
+    if (request.recruiter) {
+      formData.append('recruiter', request.recruiter);
+    }
 
-      const response = await this.client.post<CreateBidResponse>('/api/bids', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response.data;
+    const response = await this.client.post<CreateBidResponse>('/api/bids', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
+    return response.data;
   }
 
   /**
@@ -166,51 +165,47 @@ export class ApiClient {
 
   /**
    * Update a bid
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async updateBid(id: string, updates: Partial<Bid>): Promise<Bid> {
-    return this.withRetry(async () => {
-      const response = await this.client.put<Bid>(`/api/bids/${id}`, updates);
-      return response.data;
-    });
+    const response = await this.client.put<Bid>(`/api/bids/${id}`, updates);
+    return response.data;
   }
 
   /**
    * Mark bid as rejected
+   * Note: Does not use retry logic as this is a state-changing operation
    */
-  async markBidRejected(id: string): Promise<{ success: boolean }> {
-    return this.withRetry(async () => {
-      const response = await this.client.post<{ success: boolean }>(`/api/bids/${id}/reject`);
-      return response.data;
-    });
+  async markBidRejected(id: string, reason: string): Promise<{ success: boolean }> {
+    const response = await this.client.post<{ success: boolean }>(`/api/bids/${id}/reject`, { reason });
+    return response.data;
   }
 
   /**
    * Delete a bid
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async deleteBid(id: string): Promise<void> {
-    return this.withRetry(async () => {
-      await this.client.delete(`/api/bids/${id}`);
-    });
+    await this.client.delete(`/api/bids/${id}`);
   }
 
   /**
    * Rebid with new resume
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async rebid(bidId: string, request: RebidRequest): Promise<RebidResponse> {
-    return this.withRetry(async () => {
-      const formData = new FormData();
-      formData.append('resume', request.resumeFile);
-      if (request.jobDescription) {
-        formData.append('newJobDescription', request.jobDescription);
-      }
+    const formData = new FormData();
+    formData.append('resume', request.resumeFile);
+    if (request.jobDescription) {
+      formData.append('newJobDescription', request.jobDescription);
+    }
 
-      const response = await this.client.post<RebidResponse>(`/api/bids/${bidId}/rebid`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response.data;
+    const response = await this.client.post<RebidResponse>(`/api/bids/${bidId}/rebid`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
+    return response.data;
   }
 
   /**
@@ -272,12 +267,11 @@ export class ApiClient {
 
   /**
    * Schedule a new interview
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async scheduleInterview(request: ScheduleInterviewRequest): Promise<ScheduleInterviewResponse> {
-    return this.withRetry(async () => {
-      const response = await this.client.post<ScheduleInterviewResponse>('/api/interviews', request);
-      return response.data;
-    });
+    const response = await this.client.post<ScheduleInterviewResponse>('/api/interviews', request);
+    return response.data;
   }
 
   /**
@@ -308,61 +302,64 @@ export class ApiClient {
 
   /**
    * Update an interview
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async updateInterview(id: string, updates: Partial<Interview>): Promise<Interview> {
-    return this.withRetry(async () => {
-      const response = await this.client.put<Interview>(`/api/interviews/${id}`, updates);
-      return response.data;
-    });
+    const response = await this.client.put<Interview>(`/api/interviews/${id}`, updates);
+    return response.data;
   }
 
   /**
    * Delete an interview
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async deleteInterview(id: string): Promise<void> {
-    return this.withRetry(async () => {
-      await this.client.delete(`/api/interviews/${id}`);
-    });
+    await this.client.delete(`/api/interviews/${id}`);
   }
 
   /**
    * Mark interview as attended
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async attendInterview(id: string): Promise<{ success: boolean; status: string }> {
-    return this.withRetry(async () => {
-      const response = await this.client.post<{ success: boolean; status: string }>(`/api/interviews/${id}/attend`);
-      return response.data;
-    });
+    const response = await this.client.post<{ success: boolean; status: string }>(`/api/interviews/${id}/attend`);
+    return response.data;
   }
 
   /**
    * Close a pending interview manually
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async closeInterview(id: string): Promise<{ success: boolean; status: string }> {
-    return this.withRetry(async () => {
-      const response = await this.client.post<{ success: boolean; status: string }>(`/api/interviews/${id}/close`);
-      return response.data;
-    });
+    const response = await this.client.post<{ success: boolean; status: string }>(`/api/interviews/${id}/close`);
+    return response.data;
   }
 
   /**
    * Cancel an interview
+   * Note: Does not use retry logic as this is a state-changing operation
    */
-  async cancelInterview(id: string): Promise<{ success: boolean; status: string }> {
-    return this.withRetry(async () => {
-      const response = await this.client.post<{ success: boolean; status: string }>(`/api/interviews/${id}/cancel`);
-      return response.data;
-    });
+  async cancelInterview(id: string, cancellationReason: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post<{ success: boolean; message: string }>(`/api/interviews/${id}/cancel`, { cancellationReason });
+    return response.data;
+  }
+
+  /**
+   * Revert a cancelled interview back to scheduled
+   * Note: Does not use retry logic as this is a state-changing operation
+   */
+  async revertCancelInterview(id: string): Promise<{ success: boolean; status: string }> {
+    const response = await this.client.post<{ success: boolean; status: string }>(`/api/interviews/${id}/revert-cancel`);
+    return response.data;
   }
 
   /**
    * Complete an interview
+   * Note: Does not use retry logic as this is a state-changing operation
    */
   async completeInterview(id: string, request: CompleteInterviewRequest): Promise<CompleteInterviewResponse> {
-    return this.withRetry(async () => {
-      const response = await this.client.post<CompleteInterviewResponse>(`/api/interviews/${id}/complete`, request);
-      return response.data;
-    });
+    const response = await this.client.post<CompleteInterviewResponse>(`/api/interviews/${id}/complete`, request);
+    return response.data;
   }
 
   // ==================== COMPANY HISTORY ENDPOINTS ====================

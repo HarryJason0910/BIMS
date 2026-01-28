@@ -17,18 +17,18 @@ interface InterviewFiltersProps {
 }
 
 export const InterviewFilters: React.FC<InterviewFiltersProps> = ({ onFiltersChange, onSortChange }) => {
-  // Calculate default date range: one week ago to tomorrow (to include today's data)
+  // Calculate default date range: 3 days ago to 7 days later
   const getDefaultDateRange = () => {
     const today = new Date();
-    const weekAgo = new Date();
-    weekAgo.setDate(today.getDate() - 7);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(today.getDate() - 3);
     
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
+    const sevenDaysLater = new Date();
+    sevenDaysLater.setDate(today.getDate() + 7);
     
     return {
-      dateFrom: weekAgo.toISOString().split('T')[0],
-      dateTo: tomorrow.toISOString().split('T')[0]
+      dateFrom: threeDaysAgo.toISOString().split('T')[0],
+      dateTo: sevenDaysLater.toISOString().split('T')[0]
     };
   };
 

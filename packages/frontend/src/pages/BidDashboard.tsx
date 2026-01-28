@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Box, Fab, Zoom } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { BidList } from '../components/BidList';
@@ -37,28 +37,28 @@ export const BidDashboard: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewMode]);
 
-  const handleCreateSuccess = () => {
+  const handleCreateSuccess = useCallback(() => {
     setViewMode('list');
-  };
+  }, []);
 
-  const handleRebidClick = (bid: Bid) => {
+  const handleRebidClick = useCallback((bid: Bid) => {
     if (bid.interviewWinning) {
       alert('Cannot rebid: This bid has already won an interview');
       return;
     }
     setSelectedBid(bid);
     setViewMode('rebid');
-  };
+  }, []);
 
-  const handleRebidSuccess = () => {
+  const handleRebidSuccess = useCallback(() => {
     setViewMode('list');
     setSelectedBid(null);
-  };
+  }, []);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setViewMode('list');
     setSelectedBid(null);
-  };
+  }, []);
 
   return (
     <Box sx={{ position: 'relative', pb: 10 }}>
