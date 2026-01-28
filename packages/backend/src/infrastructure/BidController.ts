@@ -37,7 +37,7 @@ export class BidController {
   private async createBid(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // Validate required fields
-      const { link, company, client, role, mainStacks, jobDescription, origin, recruiter } = req.body;
+      const { link, company, client, role, mainStacks, jobDescription, origin, recruiter, resumeChecker } = req.body;
       const resumeFile = req.file;
 
       if (!link || !company || !client || !role || !mainStacks || !jobDescription || !resumeFile || !origin) {
@@ -93,6 +93,7 @@ export class BidController {
         resumePath: resumePath,
         origin: origin as BidOrigin,
         recruiter: origin === 'LINKEDIN' ? recruiter : undefined,
+        resumeChecker: resumeChecker || undefined,
       });
 
       res.status(201).json(result);
@@ -153,7 +154,9 @@ export class BidController {
         interviewWinning: bid.interviewWinning,
         bidDetail: bid.bidDetail,
         resumeChecker: bid.resumeChecker,
-        originalBidId: bid.originalBidId
+        originalBidId: bid.originalBidId,
+        rejectionReason: bid.rejectionReason,
+        hasBeenRebid: bid.hasBeenRebid
       }));
       
       res.json(serializedBids);
@@ -192,7 +195,9 @@ export class BidController {
         interviewWinning: bid.interviewWinning,
         bidDetail: bid.bidDetail,
         resumeChecker: bid.resumeChecker,
-        originalBidId: bid.originalBidId
+        originalBidId: bid.originalBidId,
+        rejectionReason: bid.rejectionReason,
+        hasBeenRebid: bid.hasBeenRebid
       };
 
       res.json(serializedBid);
@@ -324,8 +329,15 @@ export class BidController {
       }
 
       // Update allowed fields
-      const updates = req.body;
-      Object.assign(bid, updates);
+      const { status, resumeChecker } = req.body;
+      
+      if (status !== undefined) {
+        (bid as any)._bidStatus = status;
+      }
+      
+      if (resumeChecker !== undefined) {
+        bid.setResumeChecker(resumeChecker || null);
+      }
 
       await this.bidRepository.update(bid);
       res.json(bid);
@@ -337,6 +349,7 @@ export class BidController {
   private async markRejected(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
+      const { reason } = req.body;
       const bid = await this.bidRepository.findById(id);
 
       if (!bid) {
@@ -347,7 +360,15 @@ export class BidController {
         return;
       }
 
-      bid.markAsRejected();
+      if (!reason) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'Rejection reason is required',
+        });
+        return;
+      }
+
+      bid.markAsRejected(reason);
       await this.bidRepository.update(bid);
       
       res.json({ success: true });

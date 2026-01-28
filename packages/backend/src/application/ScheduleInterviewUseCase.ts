@@ -19,6 +19,8 @@ export interface ScheduleInterviewRequest {
   recruiter: string;
   attendees: string[];
   detail?: string; // Optional - can be added later when completing the interview
+  baseInterviewId?: string; // Optional - ID of the interview this is scheduled from (for "Schedule Next" feature)
+  date?: string; // Optional - interview date in ISO format, defaults to today if not provided
 }
 
 /**
@@ -81,6 +83,27 @@ export class ScheduleInterviewUseCase {
       jobDescription = '';
       resume = '';
       bidId = bid.id;
+      
+      // IDEMPOTENCY CHECK: Check if interview already exists for this bid + type
+      // This prevents duplicate interviews from double-clicks
+      if (bidId) {
+        const existingInterviews = await this.interviewRepository.findByBidId(bidId);
+        const duplicateInterview = existingInterviews.find(
+          interview => interview.interviewType === request.interviewType && 
+                      interview.status === 'SCHEDULED'
+        );
+        
+        if (duplicateInterview) {
+          // Return existing interview instead of creating duplicate
+          return {
+            interviewId: duplicateInterview.id,
+            eligibilityResult: {
+              allowed: true,
+              reason: 'Interview already scheduled (duplicate request prevented)'
+            }
+          };
+        }
+      }
     }
 
     // 3. Check interview eligibility using policy and company history
@@ -97,7 +120,7 @@ export class ScheduleInterviewUseCase {
       throw new Error(`Interview not allowed: ${eligibilityResult.reason}`);
     }
 
-    // 5. Create new Interview aggregate with today's date
+    // 5. Create new Interview aggregate with provided date or today's date
     const interview = Interview.create({
       base: request.base,
       company,
@@ -110,6 +133,7 @@ export class ScheduleInterviewUseCase {
       attendees: request.attendees,
       detail: request.detail || '', // Optional - defaults to empty string
       bidId: bidId || undefined,
+      date: request.date ? new Date(request.date) : undefined, // Use provided date or default to today
     });
 
     // 6. Save interview to repository
@@ -124,7 +148,16 @@ export class ScheduleInterviewUseCase {
       }
     }
 
-    // 8. Return interview ID and eligibility result
+    // 8. If this is a "Schedule Next" interview, mark the base interview as scheduled next
+    if (request.baseInterviewId) {
+      const baseInterview = await this.interviewRepository.findById(request.baseInterviewId);
+      if (baseInterview) {
+        baseInterview.markAsScheduledNext();
+        await this.interviewRepository.update(baseInterview);
+      }
+    }
+
+    // 9. Return interview ID and eligibility result
     return {
       interviewId: interview.id,
       eligibilityResult,

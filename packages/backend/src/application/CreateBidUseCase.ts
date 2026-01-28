@@ -1,4 +1,4 @@
-import { Bid, BidOrigin } from '../domain/Bid';
+import { Bid, BidOrigin, ResumeCheckerType } from '../domain/Bid';
 import { DuplicationDetectionPolicy, DuplicationWarning } from '../domain/DuplicationDetectionPolicy';
 import { CompanyHistory } from '../domain/CompanyHistory';
 import { IBidRepository } from './IBidRepository';
@@ -16,6 +16,7 @@ export interface CreateBidRequest {
   resumePath: string;
   origin: BidOrigin;
   recruiter?: string;
+  resumeChecker?: ResumeCheckerType;
 }
 
 /**
@@ -82,6 +83,11 @@ export class CreateBidUseCase {
       origin: request.origin,
       recruiter: request.recruiter,
     });
+
+    // 5.1. Set resume checker if provided
+    if (request.resumeChecker) {
+      bid.setResumeChecker(request.resumeChecker);
+    }
 
     // 6. Attach company warning to bidDetail if exists
     if (companyWarning) {

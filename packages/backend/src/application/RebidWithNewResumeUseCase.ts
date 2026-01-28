@@ -2,6 +2,7 @@ import { Bid } from '../domain/Bid';
 import { DuplicationDetectionPolicy } from '../domain/DuplicationDetectionPolicy';
 import { CompanyHistory } from '../domain/CompanyHistory';
 import { IBidRepository } from './IBidRepository';
+import { IInterviewRepository } from './IInterviewRepository';
 
 /**
  * Request interface for rebidding with a new resume
@@ -26,7 +27,9 @@ export interface RebidResponse {
  * 
  * Flow:
  * 1. Fetch original bid from repository
- * 2. Check if rebidding is allowed (canRebid() returns true)
+ * 2. Check if rebidding is allowed based on:
+ *    - Bid rejection reason (UNSATISFIED_RESUME)
+ *    - Interview failure reason (if interview was conducted)
  * 3. If not allowed, return error with reason
  * 4. Create new bid with same company, role, link but new resume
  * 5. Link new bid to original bid (store originalBidId reference)
@@ -38,6 +41,7 @@ export interface RebidResponse {
 export class RebidWithNewResumeUseCase {
   constructor(
     private bidRepository: IBidRepository,
+    private interviewRepository: IInterviewRepository,
     private duplicationPolicy: DuplicationDetectionPolicy,
     private companyHistory: CompanyHistory
   ) {}
@@ -50,13 +54,37 @@ export class RebidWithNewResumeUseCase {
       throw new Error(`Original bid with ID ${request.originalBidId} not found`);
     }
 
-    // 2. Check if rebidding is allowed (canRebid() returns true)
-    if (!originalBid.canRebid()) {
-      // 3. If not allowed, return error with reason
-      const reason = originalBid.isInterviewStarted()
-        ? 'Cannot rebid on a job that reached interview stage (interviewWinning is true)'
-        : 'Cannot rebid on this job';
+    // 2. Check if rebidding is allowed based on bid rejection reason
+    let rebidAllowed = false;
+    let reason = '';
+
+    // Check if bid was rejected with UNSATISFIED_RESUME
+    if (originalBid.canRebid()) {
+      rebidAllowed = true;
+      reason = 'Rebid allowed - bid was rejected due to unsatisfied resume';
+    } else if (originalBid.isInterviewStarted()) {
+      // If interview was started, check interview failure reasons
+      const interviews = await this.interviewRepository.findAll();
+      const bidInterviews = interviews.filter(i => i.bidId === originalBid.id);
       
+      // Check if any failed interview allows rebid
+      for (const interview of bidInterviews) {
+        if (interview.canRebidAfterFailure()) {
+          rebidAllowed = true;
+          reason = `Rebid allowed - interview failed with rebiddable reason`;
+          break;
+        }
+      }
+      
+      if (!rebidAllowed) {
+        reason = 'Cannot rebid - interview failed with non-rebiddable reason (e.g., HR interview failed due to Bilingual or Not Remote)';
+      }
+    } else {
+      reason = 'Cannot rebid - bid was rejected due to role closure';
+    }
+
+    // 3. If not allowed, return error with reason
+    if (!rebidAllowed) {
       return {
         newBidId: '',
         allowed: false,
@@ -104,11 +132,15 @@ export class RebidWithNewResumeUseCase {
     // 8. Save new bid to repository
     await this.bidRepository.save(newBid);
 
-    // 9. Return new bid ID
+    // 9. Mark original bid as having been rebid
+    originalBid.markAsRebid();
+    await this.bidRepository.update(originalBid);
+
+    // 10. Return new bid ID
     return {
       newBidId: newBid.id,
       allowed: true,
-      reason: 'Rebid allowed - original bid was rejected before interview stage',
+      reason,
     };
   }
 }

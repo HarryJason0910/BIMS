@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import { ScheduleInterviewUseCase } from '../application/ScheduleInterviewUseCase';
 import { CompleteInterviewUseCase } from '../application/CompleteInterviewUseCase';
+import { CancelInterviewUseCase } from '../application/CancelInterviewUseCase';
 import { IInterviewRepository } from '../application/IInterviewRepository';
-import { InterviewBase } from '../domain/Interview';
+import { InterviewBase, CancellationReason } from '../domain/Interview';
 
 export class InterviewController {
   private router: Router;
@@ -10,6 +11,7 @@ export class InterviewController {
   constructor(
     private scheduleInterviewUseCase: ScheduleInterviewUseCase,
     private completeInterviewUseCase: CompleteInterviewUseCase,
+    private cancelInterviewUseCase: CancelInterviewUseCase,
     private interviewRepository: IInterviewRepository
   ) {
     this.router = Router();
@@ -24,6 +26,7 @@ export class InterviewController {
     this.router.post('/:id/close', this.closeInterview.bind(this));
     this.router.post('/:id/complete', this.completeInterview.bind(this));
     this.router.post('/:id/cancel', this.cancelInterview.bind(this));
+    this.router.post('/:id/revert-cancel', this.revertCancellation.bind(this));
     this.router.put('/:id', this.updateInterview.bind(this));
     this.router.delete('/:id', this.deleteInterview.bind(this));
   }
@@ -42,6 +45,8 @@ export class InterviewController {
         recruiter,
         attendees,
         detail,
+        baseInterviewId,
+        date,
       } = req.body;
 
       // Validate required fields
@@ -113,6 +118,8 @@ export class InterviewController {
         recruiter,
         attendees,
         detail: detail || '', // Optional - defaults to empty string
+        baseInterviewId, // Pass the base interview ID if provided
+        date, // Pass the interview date if provided
       });
 
       res.status(201).json(result);
@@ -220,7 +227,7 @@ export class InterviewController {
   private async completeInterview(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const { success, detail } = req.body;
+      const { success, detail, failureReason } = req.body;
 
       if (typeof success !== 'boolean') {
         res.status(400).json({
@@ -234,6 +241,7 @@ export class InterviewController {
         interviewId: id,
         success,
         detail,
+        failureReason,
       });
 
       res.json(result);
@@ -243,6 +251,40 @@ export class InterviewController {
   }
 
   private async cancelInterview(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { cancellationReason } = req.body;
+
+      // Validate cancellation reason
+      if (!cancellationReason) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'cancellationReason is required',
+        });
+        return;
+      }
+
+      if (cancellationReason !== CancellationReason.ROLE_CLOSED && 
+          cancellationReason !== CancellationReason.RESCHEDULED) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'cancellationReason must be either "Role Closed" or "Rescheduled"',
+        });
+        return;
+      }
+
+      const result = await this.cancelInterviewUseCase.execute({
+        interviewId: id,
+        cancellationReason
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async revertCancellation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
       const interview = await this.interviewRepository.findById(id);
@@ -255,7 +297,7 @@ export class InterviewController {
         return;
       }
 
-      interview.markAsCancelled();
+      interview.revertCancellation();
       
       await this.interviewRepository.update(interview);
       res.json({ success: true, status: interview.status });

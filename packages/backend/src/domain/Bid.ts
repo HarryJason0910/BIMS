@@ -34,6 +34,14 @@ export enum BidOrigin {
 }
 
 /**
+ * Enum representing the reason for bid rejection
+ */
+export enum RejectionReason {
+  ROLE_CLOSED = "Role Closed",
+  UNSATISFIED_RESUME = "Unsatisfied Resume"
+}
+
+/**
  * Data required to create a new Bid
  */
 export interface CreateBidData {
@@ -74,7 +82,9 @@ export class Bid {
     private _interviewWinning: boolean,
     private _bidDetail: string,
     private _resumeChecker: ResumeCheckerType | null,
-    public readonly originalBidId: string | null = null
+    private _rejectionReason: RejectionReason | null = null,
+    public readonly originalBidId: string | null = null,
+    private _hasBeenRebid: boolean = false
   ) {}
 
   /**
@@ -113,7 +123,7 @@ export class Bid {
     }
 
     // Generate unique ID (in production, this would use a proper ID generator)
-    const id = `bid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `bid-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     
     // Set date to today
     const today = new Date();
@@ -135,7 +145,9 @@ export class Bid {
       false,                    // Default interviewWinning
       '',                       // Default bidDetail
       null,                     // Default resumeChecker
-      data.originalBidId || null
+      null,                     // Default rejectionReason
+      data.originalBidId || null, // originalBidId
+      false                     // Default hasBeenRebid
     );
   }
 
@@ -156,6 +168,22 @@ export class Bid {
     return this._resumeChecker;
   }
 
+  get rejectionReason(): RejectionReason | null {
+    return this._rejectionReason;
+  }
+
+  get hasBeenRebid(): boolean {
+    return this._hasBeenRebid;
+  }
+
+  /**
+   * Mark this bid as having been rebid
+   * Once set, this cannot be unset
+   */
+  markAsRebid(): void {
+    this._hasBeenRebid = true;
+  }
+
   /**
    * Transition bid to SUBMITTED status
    */
@@ -170,7 +198,7 @@ export class Bid {
    * Transition bid to REJECTED status
    * Cannot reject after interview stage has started
    */
-  markAsRejected(): void {
+  markAsRejected(reason: RejectionReason): void {
     if (this._bidStatus === BidStatus.INTERVIEW_STAGE) {
       throw new Error('Cannot reject bid after interview stage has started');
     }
@@ -178,6 +206,7 @@ export class Bid {
       throw new Error('Cannot reject bid that is already closed');
     }
     this._bidStatus = BidStatus.REJECTED;
+    this._rejectionReason = reason;
   }
 
   /**
@@ -233,9 +262,10 @@ export class Bid {
 
   /**
    * Set the resume checker type (ATS or RECRUITER)
-   * Based on inference from rejection timing
+   * Based on inference from rejection timing or manual selection
+   * Can be set to null to clear the value
    */
-  setResumeChecker(type: ResumeCheckerType): void {
+  setResumeChecker(type: ResumeCheckerType | null): void {
     this._resumeChecker = type;
   }
 
@@ -244,9 +274,12 @@ export class Bid {
    * Rebidding is only allowed if:
    * - Bid status is REJECTED
    * - interviewWinning is false (never reached interview stage)
+   * - Rejection reason is UNSATISFIED_RESUME
    */
   canRebid(): boolean {
-    return this._bidStatus === BidStatus.REJECTED && !this._interviewWinning;
+    return this._bidStatus === BidStatus.REJECTED && 
+           !this._interviewWinning &&
+           this._rejectionReason === RejectionReason.UNSATISFIED_RESUME;
   }
 
   /**
@@ -278,7 +311,9 @@ export class Bid {
       interviewWinning: this._interviewWinning,
       bidDetail: this._bidDetail,
       resumeChecker: this._resumeChecker,
-      originalBidId: this.originalBidId
+      rejectionReason: this._rejectionReason,
+      originalBidId: this.originalBidId,
+      hasBeenRebid: this._hasBeenRebid
     };
   }
 }

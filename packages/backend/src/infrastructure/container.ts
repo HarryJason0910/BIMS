@@ -16,6 +16,7 @@ import { CreateBidUseCase } from '../application/CreateBidUseCase';
 import { RebidWithNewResumeUseCase } from '../application/RebidWithNewResumeUseCase';
 import { ScheduleInterviewUseCase } from '../application/ScheduleInterviewUseCase';
 import { CompleteInterviewUseCase } from '../application/CompleteInterviewUseCase';
+import { CancelInterviewUseCase } from '../application/CancelInterviewUseCase';
 import { DuplicationDetectionPolicy } from '../domain/DuplicationDetectionPolicy';
 import { InterviewEligibilityPolicy } from '../domain/InterviewEligibilityPolicy';
 import { ResumeCheckerService } from '../domain/ResumeCheckerService';
@@ -49,6 +50,7 @@ export class Container {
   public rebidWithNewResumeUseCase!: RebidWithNewResumeUseCase;
   public scheduleInterviewUseCase!: ScheduleInterviewUseCase;
   public completeInterviewUseCase!: CompleteInterviewUseCase;
+  public cancelInterviewUseCase!: CancelInterviewUseCase;
 
   private constructor() {}
 
@@ -103,6 +105,7 @@ export class Container {
 
     this.rebidWithNewResumeUseCase = new RebidWithNewResumeUseCase(
       this.bidRepository,
+      this.interviewRepository,
       this.duplicationDetectionPolicy,
       companyHistory
     );
@@ -118,6 +121,12 @@ export class Container {
       this.interviewRepository,
       this.bidRepository,
       companyHistory,
+      this.companyHistoryRepository
+    );
+
+    this.cancelInterviewUseCase = new CancelInterviewUseCase(
+      this.interviewRepository,
+      this.bidRepository,
       this.companyHistoryRepository
     );
 

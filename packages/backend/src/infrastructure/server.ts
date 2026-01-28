@@ -77,6 +77,7 @@ export class Server {
     this.interviewController = new InterviewController(
       this.container.scheduleInterviewUseCase,
       this.container.completeInterviewUseCase,
+      this.container.cancelInterviewUseCase,
       this.container.interviewRepository
     );
 

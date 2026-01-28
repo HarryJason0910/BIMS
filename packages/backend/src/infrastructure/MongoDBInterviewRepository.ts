@@ -21,7 +21,10 @@ interface InterviewDocument {
   attendees: string[];
   status: string;
   detail: string;
+  failureReason: string | null;
   bidId: string | null;
+  hasScheduledNext: boolean;
+  cancellationReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,7 +71,10 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
       attendees: json.attendees,
       status: json.status,
       detail: json.detail,
+      failureReason: json.failureReason,
       bidId: json.bidId,
+      hasScheduledNext: json.hasScheduledNext,
+      cancellationReason: json.cancellationReason,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -92,13 +98,17 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
       attendees: doc.attendees,
       detail: doc.detail,
       bidId: doc.bidId || undefined,
+      date: doc.date, // Pass the stored date from database
     });
 
     // Use Object.defineProperty to set private fields and readonly fields
     Object.defineProperty(interview, 'id', { value: doc._id.toString(), writable: false });
-    Object.defineProperty(interview, 'date', { value: doc.date, writable: false });
+    // Note: date is already set correctly in Interview.create() above
     Object.defineProperty(interview, '_status', { value: doc.status as InterviewStatus, writable: true });
     Object.defineProperty(interview, '_detail', { value: doc.detail, writable: true });
+    Object.defineProperty(interview, '_failureReason', { value: doc.failureReason, writable: true });
+    Object.defineProperty(interview, '_hasScheduledNext', { value: doc.hasScheduledNext || false, writable: true });
+    Object.defineProperty(interview, '_cancellationReason', { value: doc.cancellationReason || null, writable: true });
 
     return interview;
   }
@@ -173,8 +183,8 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
 
   async findByCompanyAndRole(company: string, role: string): Promise<Interview[]> {
     const docs = await this.collection.find({
-      company: { $regex: new RegExp(`^${company}$`, 'i') },
-      role: { $regex: new RegExp(`^${role}$`, 'i') },
+      company: { $regex: new RegExp(`^${company}`, 'i') },
+      role: { $regex: new RegExp(`^${role}`, 'i') },
     }).toArray();
     return docs.map(doc => this.toDomain(doc));
   }
