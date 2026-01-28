@@ -5,6 +5,7 @@ import { BidController } from './BidController';
 import { InterviewController } from './InterviewController';
 import { CompanyHistoryController } from './CompanyHistoryController';
 import { TechStackController } from './TechStackController';
+import { AnalyticsController } from './AnalyticsController';
 
 export interface ServerConfig {
   port: number;
@@ -19,6 +20,7 @@ export class Server {
   private interviewController!: InterviewController;
   private companyHistoryController!: CompanyHistoryController;
   private techStackController!: TechStackController;
+  private analyticsController!: AnalyticsController;
 
   constructor(config: ServerConfig, container: Container) {
     this.app = express();
@@ -83,6 +85,11 @@ export class Server {
     );
 
     this.techStackController = new TechStackController();
+
+    this.analyticsController = new AnalyticsController(
+      this.container.bidRepository,
+      this.container.interviewRepository
+    );
   }
 
   private setupRoutes(): void {
@@ -99,6 +106,7 @@ export class Server {
     this.app.use('/api/interviews', this.interviewController.getRouter());
     this.app.use('/api/company-history', this.companyHistoryController.getRouter());
     this.app.use('/api/tech-stacks', this.techStackController.getRouter());
+    this.app.use('/api/analytics', this.analyticsController.getRouter());
   }
 
   private async downloadFile(req: Request, res: Response): Promise<void> {

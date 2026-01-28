@@ -52,7 +52,7 @@ export interface CreateInterviewData {
   interviewType: InterviewType;
   recruiter: string;
   attendees: string[];
-  detail: string;
+  detail?: string; // Optional - can be added later when completing the interview
   bidId?: string; // Required if base is BID
 }
 
@@ -127,11 +127,12 @@ export class Interview {
     if (!data.recruiter || data.recruiter.trim() === '') {
       throw new Error('Interview recruiter is required');
     }
-    if (!data.attendees || data.attendees.length === 0) {
-      throw new Error('Interview attendees is required');
+    if (!Array.isArray(data.attendees)) {
+      throw new Error('Interview attendees must be an array');
     }
-    if (!data.detail || data.detail.trim() === '') {
-      throw new Error('Interview detail is required');
+    // For non-HR interviews, attendees are required
+    if (data.interviewType !== InterviewType.HR && data.attendees.length === 0) {
+      throw new Error('Interview attendees are required for non-HR interviews');
     }
 
     // Generate unique ID (in production, this would use a proper ID generator)
@@ -154,7 +155,7 @@ export class Interview {
       data.recruiter,
       data.attendees,
       InterviewStatus.SCHEDULED, // Default status
-      data.detail,
+      data.detail || '', // Default to empty string if not provided
       data.bidId || null
     );
   }
@@ -289,13 +290,10 @@ export class Interview {
 
   /**
    * Update the detail field
-   * Used when completing an interview with additional notes
+   * Used when editing interview notes at any time
    */
   updateDetail(detail: string): void {
-    if (!detail || detail.trim() === '') {
-      throw new Error('Detail cannot be empty');
-    }
-    this._detail = detail;
+    this._detail = detail || ''; // Allow empty details
   }
 
   /**

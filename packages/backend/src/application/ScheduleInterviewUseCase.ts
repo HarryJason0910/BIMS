@@ -1,4 +1,4 @@
-import { Interview, InterviewBase } from '../domain/Interview';
+import { Interview, InterviewBase, InterviewType } from '../domain/Interview';
 import { InterviewEligibilityPolicy, EligibilityResult } from '../domain/InterviewEligibilityPolicy';
 import { CompanyHistory } from '../domain/CompanyHistory';
 import { IInterviewRepository } from './IInterviewRepository';
@@ -18,7 +18,7 @@ export interface ScheduleInterviewRequest {
   interviewType: string;
   recruiter: string;
   attendees: string[];
-  detail: string;
+  detail?: string; // Optional - can be added later when completing the interview
 }
 
 /**
@@ -105,10 +105,10 @@ export class ScheduleInterviewUseCase {
       role,
       jobDescription,
       resume,
-      interviewType: request.interviewType,
+      interviewType: request.interviewType as InterviewType,
       recruiter: request.recruiter,
       attendees: request.attendees,
-      detail: request.detail,
+      detail: request.detail || '', // Optional - defaults to empty string
       bidId: bidId || undefined,
     });
 
@@ -140,8 +140,13 @@ export class ScheduleInterviewUseCase {
       throw new Error('recruiter is required');
     }
 
-    if (!request.attendees || request.attendees.length === 0) {
-      throw new Error('attendees is required');
+    if (!Array.isArray(request.attendees)) {
+      throw new Error('attendees must be an array');
+    }
+
+    // For non-HR interviews, attendees are required
+    if (request.interviewType.toUpperCase() !== 'HR' && request.attendees.length === 0) {
+      throw new Error('attendees are required for non-HR interviews');
     }
 
     if (!request.interviewType || request.interviewType.trim() === '') {

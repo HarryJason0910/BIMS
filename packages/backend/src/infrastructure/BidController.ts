@@ -29,6 +29,7 @@ export class BidController {
     this.router.get('/:id/jd', this.downloadJobDescription.bind(this));
     this.router.get('/:id/candidate-resumes', this.getCandidateResumes.bind(this));
     this.router.post('/:id/rebid', this.upload.single('resume'), this.rebid.bind(this));
+    this.router.post('/:id/reject', this.markRejected.bind(this));
     this.router.put('/:id', this.updateBid.bind(this));
     this.router.delete('/:id', this.deleteBid.bind(this));
   }
@@ -328,6 +329,28 @@ export class BidController {
 
       await this.bidRepository.update(bid);
       res.json(bid);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async markRejected(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const bid = await this.bidRepository.findById(id);
+
+      if (!bid) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: `Bid with id ${id} not found`,
+        });
+        return;
+      }
+
+      bid.markAsRejected();
+      await this.bidRepository.update(bid);
+      
+      res.json({ success: true });
     } catch (error) {
       next(error);
     }

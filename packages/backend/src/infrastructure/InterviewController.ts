@@ -45,18 +45,28 @@ export class InterviewController {
       } = req.body;
 
       // Validate required fields
-      if (!base || !interviewType || !recruiter || !attendees || !detail) {
+      if (!base || !interviewType || !recruiter) {
         res.status(400).json({
           error: 'Validation Error',
-          message: 'Missing required fields: base, interviewType, recruiter, attendees, detail',
+          message: 'Missing required fields: base, interviewType, recruiter',
         });
         return;
       }
 
+      // Validate attendees array exists (but can be empty for HR interviews)
       if (!Array.isArray(attendees)) {
         res.status(400).json({
           error: 'Validation Error',
           message: 'attendees must be an array',
+        });
+        return;
+      }
+
+      // For non-HR interviews, attendees are required
+      if (interviewType !== 'HR' && attendees.length === 0) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'attendees are required for non-HR interviews',
         });
         return;
       }
@@ -102,7 +112,7 @@ export class InterviewController {
         interviewType,
         recruiter,
         attendees,
-        detail,
+        detail: detail || '', // Optional - defaults to empty string
       });
 
       res.status(201).json(result);
@@ -267,9 +277,11 @@ export class InterviewController {
         return;
       }
 
-      // Update allowed fields
-      const updates = req.body;
-      Object.assign(interview, updates);
+      // Update detail field using the domain method
+      const { detail } = req.body;
+      if (detail !== undefined) {
+        interview.updateDetail(detail);
+      }
 
       await this.interviewRepository.update(interview);
       res.json(interview);
