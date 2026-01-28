@@ -7,7 +7,7 @@ import { CompanyHistoryController } from './CompanyHistoryController';
 
 export interface ServerConfig {
   port: number;
-  corsOrigin: string;
+  corsOrigin: string | string[];
 }
 
 export class Server {
@@ -33,10 +33,23 @@ export class Server {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
-    // CORS middleware
+    // CORS middleware - support multiple origins
+    const corsOrigins = Array.isArray(this.config.corsOrigin) 
+      ? this.config.corsOrigin 
+      : this.config.corsOrigin.split(',').map(o => o.trim());
+
     this.app.use(
       cors({
-        origin: this.config.corsOrigin,
+        origin: (origin, callback) => {
+          // Allow requests with no origin (like mobile apps or curl requests)
+          if (!origin) return callback(null, true);
+          
+          if (corsOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
         credentials: true,
       })
     );
@@ -77,7 +90,9 @@ export class Server {
     // Email connection status endpoint
     this.app.get('/api/email/status', async (_req: Request, res: Response) => {
       try {
-        const isConnected = await this.container.emailAdapter.testConnection();
+        const isConnected = this.container.emailAdapter 
+          ? await this.container.emailAdapter.testConnection()
+          : false;
         res.json({ 
           connected: isConnected,
           timestamp: new Date().toISOString()
@@ -149,7 +164,10 @@ export class Server {
   public start(): void {
     this.app.listen(this.config.port, () => {
       console.log(`Server running on port ${this.config.port}`);
-      console.log(`CORS enabled for origin: ${this.config.corsOrigin}`);
+      const origins = Array.isArray(this.config.corsOrigin) 
+        ? this.config.corsOrigin 
+        : this.config.corsOrigin.split(',').map(o => o.trim());
+      console.log(`CORS enabled for origins: ${origins.join(', ')}`);
     });
   }
 }

@@ -20,17 +20,27 @@
       "http": {
         "all": true,
         "request": true,
-        "scope": ["http://localhost:3000/**"]
+        "scope": ["http://localhost:3000/**", "http://127.0.0.1:3000/**"]
       }
     },
     "bundle": {
       "active": true,
       "targets": "all",
       "identifier": "com.jobbidsystem.app",
-      "icon": []
+      "icon": [
+        "icons/icon.ico",
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/Square30x30Logo.png",
+        "icons/Square44x44Logo.png",
+        "icons/Square71x71Logo.png",
+        "icons/Square89x89Logo.png",
+        "icons/Square107x107Logo.png",
+        "icons/Square142x142Logo.png"
+      ]
     },
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:3000 http://127.0.0.1:3000; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
     },
     "windows": [
       {

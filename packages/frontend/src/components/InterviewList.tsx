@@ -4,7 +4,6 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
   Paper, Chip, CircularProgress, Alert, Button, Box, Typography, IconButton, ButtonGroup 
 } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import { apiClient } from '../api';
@@ -14,14 +13,12 @@ interface InterviewListProps {
   filters?: InterviewFilters;
   sort?: SortOptions;
   onInterviewSelect?: (interview: Interview) => void;
-  onComplete?: (interview: Interview) => void;
 }
 
 export const InterviewList: React.FC<InterviewListProps> = ({ 
   filters, 
   sort, 
-  onInterviewSelect, 
-  onComplete 
+  onInterviewSelect
 }) => {
   const [expandedInterviewId, setExpandedInterviewId] = React.useState<string | null>(null);
   

@@ -84,7 +84,7 @@ export const InterviewDashboard: React.FC = () => {
           <InterviewList
             filters={filters}
             sort={sort}
-            onComplete={handleCompleteClick}
+            onInterviewSelect={handleCompleteClick}
           />
         </>
       )}

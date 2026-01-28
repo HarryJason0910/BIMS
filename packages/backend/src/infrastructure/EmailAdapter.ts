@@ -278,6 +278,24 @@ export class EmailAdapter {
   }
 
   /**
+   * Test connection to Microsoft Graph API
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      if (!this.client) {
+        return false;
+      }
+      
+      // Test connection by making a simple request
+      await this.client.api('/me').get();
+      return true;
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      return false;
+    }
+  }
+
+  /**
    * Poll for new emails and process them
    */
   private async pollAndProcessEmails(): Promise<void> {

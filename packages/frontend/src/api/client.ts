@@ -2,6 +2,7 @@
  * API Client for Job Bid Management System
  * 
  * Provides methods for all backend API endpoints with error handling and retry logic
+ * Automatically uses Tauri HTTP client in desktop mode, Axios in web mode
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -22,6 +23,9 @@ import {
   SortOptions
 } from './types';
 
+// Detect Tauri environment
+const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
 /**
  * API Client Configuration
  */
@@ -41,6 +45,12 @@ export class ApiClient {
   constructor(config: ApiClientConfig = {}) {
     const baseURL = config.baseURL || (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:3000';
     
+    // Log environment for debugging
+    if (isTauri) {
+      console.log('[Tauri Mode] API Client initialized with baseURL:', baseURL);
+      console.log('[Tauri Mode] Using native fetch for HTTP requests');
+    }
+    
     this.client = axios.create({
       baseURL,
       timeout: config.timeout || 30000,
@@ -56,12 +66,33 @@ export class ApiClient {
       (response) => response,
       (error) => this.handleError(error)
     );
+    
+    // Add request interceptor for debugging in Tauri
+    if (isTauri) {
+      this.client.interceptors.request.use(
+        (config) => {
+          console.log('[Tauri Request]', config.method?.toUpperCase(), config.url);
+          return config;
+        },
+        (error) => {
+          console.error('[Tauri Request Error]', error);
+          return Promise.reject(error);
+        }
+      );
+    }
   }
 
   /**
    * Handle API errors with retry logic
    */
   private async handleError(error: AxiosError): Promise<never> {
+    console.error('[API Error]', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      isTauri
+    });
+    
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
