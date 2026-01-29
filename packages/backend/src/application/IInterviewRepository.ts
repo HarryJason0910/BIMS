@@ -23,6 +23,25 @@ export interface InterviewSortOptions {
 }
 
 /**
+ * Pagination options for querying interviews
+ */
+export interface InterviewPaginationOptions {
+  page: number;      // Page number (1-indexed)
+  pageSize: number;  // Number of items per page
+}
+
+/**
+ * Paginated result for interviews
+ */
+export interface PaginatedInterviews {
+  items: Interview[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
  * Repository interface for Interview aggregate.
  * Placed in application layer following dependency inversion principle.
  */
@@ -41,6 +60,11 @@ export interface IInterviewRepository {
    * Find all interviews with optional filtering and sorting
    */
   findAll(filters?: InterviewFilterOptions, sort?: InterviewSortOptions): Promise<Interview[]>;
+
+  /**
+   * Find all interviews with optional filtering, sorting, and pagination
+   */
+  findAllPaginated(filters?: InterviewFilterOptions, sort?: InterviewSortOptions, pagination?: InterviewPaginationOptions): Promise<PaginatedInterviews>;
 
   /**
    * Find interviews by company and role (case-insensitive)

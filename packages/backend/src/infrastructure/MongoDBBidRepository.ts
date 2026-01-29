@@ -1,5 +1,5 @@
 import { Collection, ObjectId } from 'mongodb';
-import { IBidRepository, BidFilterOptions, BidSortOptions } from '../application/IBidRepository';
+import { IBidRepository, BidFilterOptions, BidSortOptions, BidPaginationOptions, PaginatedBids } from '../application/IBidRepository';
 import { Bid, BidStatus, ResumeCheckerType, BidOrigin } from '../domain/Bid';
 import { MongoDBConnection } from './MongoDBConnection';
 
@@ -209,5 +209,68 @@ export class MongoDBBidRepository implements IBidRepository {
     await this.collection.deleteOne({ 
       _id: new ObjectId(id.replace('bid-', '')) 
     });
+  }
+
+  async findAllPaginated(filters?: BidFilterOptions, sort?: BidSortOptions, pagination?: BidPaginationOptions): Promise<PaginatedBids> {
+    const query: any = {};
+
+    // Apply filters (same as findAll)
+    if (filters) {
+      if (filters.company) {
+        query.company = { $regex: new RegExp(filters.company, 'i') };
+      }
+      if (filters.role) {
+        query.role = { $regex: new RegExp(filters.role, 'i') };
+      }
+      if (filters.status) {
+        query.bidStatus = filters.status;
+      }
+      if (filters.dateFrom || filters.dateTo) {
+        query.date = {};
+        if (filters.dateFrom) {
+          query.date.$gte = filters.dateFrom;
+        }
+        if (filters.dateTo) {
+          query.date.$lte = filters.dateTo;
+        }
+      }
+      if (filters.mainStacks && filters.mainStacks.length > 0) {
+        query.mainStacks = {
+          $all: filters.mainStacks.map(stack => new RegExp(`^${stack}$`, 'i'))
+        };
+      }
+    }
+
+    // Build sort options
+    const sortOptions: any = {};
+    if (sort) {
+      const sortField = sort.field === 'bidStatus' ? 'bidStatus' : sort.field;
+      sortOptions[sortField] = sort.order === 'asc' ? 1 : -1;
+    } else {
+      sortOptions.createdAt = -1;
+    }
+
+    // Get total count
+    const total = await this.collection.countDocuments(query);
+
+    // Apply pagination
+    const page = pagination?.page || 1;
+    const pageSize = pagination?.pageSize || 20;
+    const skip = (page - 1) * pageSize;
+
+    const docs = await this.collection
+      .find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(pageSize)
+      .toArray();
+
+    return {
+      items: docs.map(doc => this.toDomain(doc)),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize)
+    };
   }
 }

@@ -1,4 +1,4 @@
-import { IBidRepository, BidFilterOptions, BidSortOptions } from '../application/IBidRepository';
+import { IBidRepository, BidFilterOptions, BidSortOptions, BidPaginationOptions, PaginatedBids } from '../application/IBidRepository';
 import { Bid } from '../domain/Bid';
 
 export class InMemoryBidRepository implements IBidRepository {
@@ -108,6 +108,25 @@ export class InMemoryBidRepository implements IBidRepository {
       throw new Error(`Bid with id ${id} not found`);
     }
     this.bids.delete(id);
+  }
+
+  async findAllPaginated(filters?: BidFilterOptions, sort?: BidSortOptions, pagination?: BidPaginationOptions): Promise<PaginatedBids> {
+    // Get all filtered and sorted results
+    const allResults = await this.findAll(filters, sort);
+    
+    // Apply pagination
+    const page = pagination?.page || 1;
+    const pageSize = pagination?.pageSize || 20;
+    const skip = (page - 1) * pageSize;
+    const items = allResults.slice(skip, skip + pageSize);
+    
+    return {
+      items,
+      total: allResults.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(allResults.length / pageSize)
+    };
   }
 
   // Helper method for testing

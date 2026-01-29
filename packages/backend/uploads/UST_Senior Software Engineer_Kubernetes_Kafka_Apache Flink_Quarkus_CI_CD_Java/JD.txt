@@ -1,0 +1,126 @@
+Role description
+Senior Software Engineer - Java Microservices
+
+Lead II - Software Engineering
+
+ 
+
+ 
+
+Who We Are:
+
+Born digital, UST transforms lives through the power of technology. We walk alongside our clients and partners, embedding innovation and agility into everything they do. We help them create transformative experiences and human-centered solutions for a better world.
+
+UST is a mission-driven group of 29,000+ practical problem solvers and creative thinkers in more than 30 countries. Our entrepreneurial teams are empowered to innovate, act nimbly, and create a lasting and sustainable impact for our clients, their customers, and the communities in which we live.
+
+With us, you’ll create a boundless impact that transforms your career—and the lives of people across the world.
+
+Visit us at UST.com.
+
+ 
+
+You Are:
+
+As a Senior Backend Software Engineer, you'll architect the infrastructure powering the only major social network.
+
+ 
+
+The opportunity:
+
+·       System Architecture & Implementation
+
+·       Migrate to use service-based APIs from a monolithic architecture
+
+·       Lead design of low-latency, event-driven architecture
+
+·       Implement reactive patterns on k8, using Kafka, Flink, Quarkus and more
+
+·       Performance Engineering
+
+·       Conduct GC tuning for Design and improve distributed caching patterns
+
+·       Comfortable with writing and running load tests
+
+·       Cross-Functional Leadership
+
+·       Co-create API specifications with mobile/desktop teams
+
+·       Partner with DevOps on CI/CD pipeline enhancements
+
+·       Mentor junior engineers through pair programming
+
+·       Production Excellence
+
+·       Own services from design through post-deployment monitoring
+
+·       Conduct blameless post-mortems for incident analysis
+
+·       Implement chaos engineering practices
+
+ 
+
+This position description identifies the responsibilities and tasks typically associated with the performance of the position. Other relevant essential functions may be required.
+
+ 
+
+What you need:
+
+·       10+ years of experience (or 5+ with exceptional open-source contributions)
+
+·       Must have deep database experience.
+
+·       What We Value (Beyond Code)
+
+·       Java Mastery: 5+ years with JVM internals (GC tuning/JIT optimization)
+
+·       Distributed Systems: Production experience with 50k+ RPS systems
+
+·       Data Modeling: Data locality, reads and writes amplification awareness
+
+·       Clear Communication: Excellent spoken and written English communication skills.
+
+ 
+
+ 
+
+Benefits
+
+Employees receive mandatory and non-mandatory benefits such as fourteen (14) days of vacation beginning on the date of hire, vacation premium, ten (10) paid holidays, a Christmas Bonus of thirty (30) days’ pay, Monthly Food Vouchers, Saving Fund, and health insurance. Certain employees may be eligible for additional Company benefits beginning on the date of hire, including dental, disability and life insurance plans; four (4) days of personal time off per year, up to three (3) days of paid medical leave per year, and up to three (3) days of paid bereavement leave per year.
+
+What we believe:
+
+We proudly embrace the values that have shaped UST since day one. We build our culture of Humility, Humanity, and Integrity. These values inspire us to nurture a people-first, human centric culture that fosters diversity, prioritizes sustainable solutions, and keeps our people and clients at the forefront of all decisions.
+
+Humility:
+
+We will listen, learn, be empathetic and help selflessly in our interactions with everyone.
+
+Humanity:
+
+Through business, we will better the lives of those less fortunate than ourselves.
+
+Integrity:
+
+We honor our commitments and act with responsibility in all our relationships.
+
+An Equal Opportunity Workplace, Free of Discrimination and Harassment
+
+At UST, we strive to provide a work environment free of discrimination and harassment. We are an equal opportunity employer and employment decisions are based on merit and business needs. Our Human Rights Policy further illustrates our stand on this. We are committed to following fair employment practices that provide equal opportunities to all employees. We do not discriminate or allow harassment on the basis of race, color, religion, disability, gender, national origin, sexual orientation, gender identity, gender expression, age, genetic information, military status, or any other legally protected status. At UST, we value diversity and believe that a diverse workplace builds a competitive advantage.
+
+Un lugar de trabajo con igualdad de oportunidades y libre de discriminación y acoso
+
+En UST, nos esforzamos por proporcionar un ambiente de trabajo libre de discriminación y acoso. Somos un empleador que ofrece igualdad de oportunidades y basa las decisiones de empleo en los méritos y las necesidades del negocio. Estamos comprometidos a seguir prácticas de empleo justas que brinden igualdad de oportunidades a todos los empleados. No discriminamos ni permitimos el acoso por motivos de raza, color, religión, discapacidad, género, origen nacional, orientación sexual, identidad de género, expresión de género, edad, información genética, estado militar o cualquier otro estado legalmente protegido. En UST, valoramos la diversidad y creemos que un lugar de trabajo diverso construye una ventaja competitiva.
+
+UST reserves the right to periodically redefine your roles and responsibilities based on the requirements of the organization and/or your performance.
+
+ 
+
+#UST
+
+#LI-LR1
+
+#LI-Remote
+
+
+Skills
+java,microservices,kafka,dynamodb,data processing,cassandra,vert.x

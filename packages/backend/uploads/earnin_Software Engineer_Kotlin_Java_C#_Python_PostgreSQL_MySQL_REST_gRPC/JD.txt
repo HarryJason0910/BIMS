@@ -1,0 +1,64 @@
+About EarnIn
+As one of the first pioneers of earned wage access, our passion at EarnIn is building products that deliver real-time financial flexibility for those with the unique needs of living paycheck to paycheck. Our community members access their earnings as they earn them, with options to spend, save, and grow their money without mandatory fees, interest rates, or credit checks.
+
+We’re fortunate to have an incredibly experienced leadership team, combined with world-class funding partners like A16Z, Matrix Partners, DST, Ribbit Capital, and a very healthy core business with a tremendous runway. We’re growing fast and are excited to continue bringing world-class talent onboard to help shape the next chapter of our growth journey.
+
+ POSITION SUMMARY
+
+We’re looking for a Backend Engineer to join our Growth Engineering team, which builds the systems and experiments that help millions of people discover, onboard, and engage with EarnIn. You’ll work on high-impact product areas across the member journey — from activation to retention — designing scalable backend services that power rapid experimentation, personalization, and data-informed product decisions.
+
+This role is ideal for an engineer who enjoys solving complex system challenges while driving measurable user and business outcomes. You’ll collaborate closely with cross-functional partners in Product, Data, Marketing, and Mobile to ship features that directly impact growth metrics.
+
+This position will ideally be hybrid from our Mexico City office as part of our expanding site, though a remote arrangement is possible. EarnIn offers excellent employee benefits, including healthcare, internet and cell phone reimbursement, a learning and development stipend, and potential opportunities to travel to our headquarters in Mountain View. Our salary ranges are determined by role, level, and location.
+
+WHAT WE'RE LOOKING FOR
+
+ 
+
+Design and implement backend features that drive EarnIn’s Growth funnel — from onboarding and cross-sell to retention and engagement.
+
+Build and maintain scalable, event-driven microservices that enable experimentation, real-time personalization, and data-driven decision-making.
+
+Collaborate with Product, Data, and Marketing teams to translate growth hypotheses into technical solutions and run experiments that move key metrics.
+
+Ensure system performance, scalability, and reliability, especially under high throughput and real-time conditions.
+
+Develop automation and testing frameworks to maintain velocity and confidence in continuous integration and deployment pipelines.
+
+Debug and resolve production issues, working across multiple service layers to maintain system stability and uptime.
+
+Proactively identify opportunities to generalize solutions, building reusable infrastructure and APIs that accelerate team development.
+
+Partner with mobile, web, and analytics teams to ensure cohesive end-to-end experiences across platforms.
+WHAT WE'RE LOOKING FOR 
+
+3+ years of backend software engineering experience, ideally in distributed or microservice-based systems.
+
+Strong fundamentals in service architecture and API design, with experience building reliable, performant systems at scale.
+
+Proficiency in at least one modern backend language, such as Kotlin, Java, C#, or Python, and openness to learning new technologies as needed.
+
+Experience with SQL databases (e.g., PostgreSQL, MySQL) and familiarity with NoSQL systems is a plus.
+
+Familiarity with event-driven patterns (queues, messaging, background jobs) and REST/gRPC services.
+
+Collaborative mindset, with experience working alongside product, data, and design teams to deliver user-facing impact.
+
+Strong testing and debugging skills, with experience maintaining high-quality services in production.
+
+Excellent communication and problem-solving abilities, with a proactive approach to learning and iteration.
+
+Bonus: Experience with experimentation frameworks, growth systems, or AI-powered personalization tools.
+WHY YOU'LL LOVE THIS ROLE
+
+High-impact engineering: Your code will directly influence how millions of members discover and engage with EarnIn.
+
+Growth-oriented culture: Work in a team that values experimentation, data-driven decision-making, and learning fast.
+
+Cross-functional collaboration: Partner closely with product, analytics, and marketing to ship features that make a measurable difference.
+
+Opportunity to grow: Gain exposure to mobile, web, and AI-driven systems as you evolve your technical and product skills.
+#LI-Hybrid
+At EarnIn, we believe that the best way to build a financial system that works for everyday people is by hiring a team that represents our diverse community. Our team is diverse not only in background and experience but also in perspective. We celebrate our diversity and strive to create a culture of belonging. EarnIn does not unlawfully discriminate based on race, color, religion, sex (including pregnancy, childbirth, breastfeeding, or related medical conditions), gender identity, gender expression, national origin, ancestry, citizenship, age, physical or mental disability, legally protected medical condition, family care status, military or veteran status, marital status, registered domestic partner status, sexual orientation, genetic information, or any other basis protected by local, state, or federal laws. EarnIn is an E-Verify participant. 
+
+EarnIn does not accept unsolicited resumes from individual recruiters or third-party recruiting agencies in response to job postings. No fee will be paid to third parties who submit unsolicited candidates directly to our hiring managers or HR team.

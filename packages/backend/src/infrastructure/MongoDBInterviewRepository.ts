@@ -1,5 +1,5 @@
 import { Collection, ObjectId } from 'mongodb';
-import { IInterviewRepository, InterviewFilterOptions, InterviewSortOptions } from '../application/IInterviewRepository';
+import { IInterviewRepository, InterviewFilterOptions, InterviewSortOptions, InterviewPaginationOptions, PaginatedInterviews } from '../application/IInterviewRepository';
 import { Interview, InterviewBase, InterviewStatus, InterviewType } from '../domain/Interview';
 import { MongoDBConnection } from './MongoDBConnection';
 
@@ -213,5 +213,71 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
     await this.collection.deleteOne({ 
       _id: new ObjectId(id.replace('interview-', '')) 
     });
+  }
+
+  async findAllPaginated(filters?: InterviewFilterOptions, sort?: InterviewSortOptions, pagination?: InterviewPaginationOptions): Promise<PaginatedInterviews> {
+    const query: any = {};
+
+    // Apply filters (same as findAll)
+    if (filters) {
+      if (filters.company) {
+        query.company = { $regex: new RegExp(filters.company, 'i') };
+      }
+      if (filters.role) {
+        query.role = { $regex: new RegExp(filters.role, 'i') };
+      }
+      if (filters.status) {
+        query.status = filters.status;
+      }
+      if (filters.recruiter) {
+        query.recruiter = { $regex: new RegExp(filters.recruiter, 'i') };
+      }
+      if (filters.interviewType) {
+        query.interviewType = filters.interviewType;
+      }
+      if (filters.attendees) {
+        query.attendees = { $elemMatch: { $regex: new RegExp(filters.attendees, 'i') } };
+      }
+      if (filters.dateFrom || filters.dateTo) {
+        query.date = {};
+        if (filters.dateFrom) {
+          query.date.$gte = filters.dateFrom;
+        }
+        if (filters.dateTo) {
+          query.date.$lte = filters.dateTo;
+        }
+      }
+    }
+
+    // Build sort options
+    const sortOptions: any = {};
+    if (sort) {
+      sortOptions[sort.field] = sort.order === 'asc' ? 1 : -1;
+    } else {
+      sortOptions.createdAt = -1;
+    }
+
+    // Get total count
+    const total = await this.collection.countDocuments(query);
+
+    // Apply pagination
+    const page = pagination?.page || 1;
+    const pageSize = pagination?.pageSize || 20;
+    const skip = (page - 1) * pageSize;
+
+    const docs = await this.collection
+      .find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(pageSize)
+      .toArray();
+
+    return {
+      items: docs.map(doc => this.toDomain(doc)),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize)
+    };
   }
 }

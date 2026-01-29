@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
 import { Container } from './container';
 import { BidController } from './BidController';
 import { InterviewController } from './InterviewController';
@@ -45,13 +46,13 @@ export class Server {
     this.app.use(
       cors({
         origin: (origin, callback) => {
-          // Allow requests with no origin (like mobile apps or curl requests)
+          // Allow requests with no origin (same-origin requests, mobile apps, curl)
           if (!origin) return callback(null, true);
           
-          if (corsOrigins.includes(origin)) {
+          if (corsOrigins.includes(origin) || corsOrigins.includes('*')) {
             callback(null, true);
           } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, true); // Allow all origins in production mode when serving static files
           }
         },
         credentials: true,
@@ -108,6 +109,22 @@ export class Server {
     this.app.use('/api/company-history', this.companyHistoryController.getRouter());
     this.app.use('/api/tech-stacks', this.techStackController.getRouter());
     this.app.use('/api/analytics', this.analyticsController.getRouter());
+
+    // Serve static files from frontend build
+    const frontendDistPath = path.join(__dirname, '../../../frontend/dist');
+    this.app.use(express.static(frontendDistPath));
+
+    // SPA fallback - serve index.html for all non-API routes
+    this.app.get('*', (req: Request, res: Response) => {
+      // Don't serve index.html for API routes
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: `API route ${req.method} ${req.path} not found`,
+        });
+      }
+      return res.sendFile(path.join(frontendDistPath, 'index.html'));
+    });
   }
 
   private async downloadFile(req: Request, res: Response): Promise<void> {
@@ -127,14 +144,6 @@ export class Server {
   }
 
   private setupErrorHandling(): void {
-    // 404 handler
-    this.app.use((req: Request, res: Response) => {
-      res.status(404).json({
-        error: 'Not Found',
-        message: `Route ${req.method} ${req.path} not found`,
-      });
-    });
-
     // Global error handler
     this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error:', err);

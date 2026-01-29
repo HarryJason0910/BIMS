@@ -21,6 +21,25 @@ export interface BidSortOptions {
 }
 
 /**
+ * Pagination options for querying bids
+ */
+export interface BidPaginationOptions {
+  page: number;      // Page number (1-indexed)
+  pageSize: number;  // Number of items per page
+}
+
+/**
+ * Paginated result for bids
+ */
+export interface PaginatedBids {
+  items: Bid[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
  * Repository interface for Bid aggregate.
  * Placed in application layer following dependency inversion principle.
  */
@@ -39,6 +58,11 @@ export interface IBidRepository {
    * Find all bids with optional filtering and sorting
    */
   findAll(filters?: BidFilterOptions, sort?: BidSortOptions): Promise<Bid[]>;
+
+  /**
+   * Find all bids with optional filtering, sorting, and pagination
+   */
+  findAllPaginated(filters?: BidFilterOptions, sort?: BidSortOptions, pagination?: BidPaginationOptions): Promise<PaginatedBids>;
 
   /**
    * Find bids by company and role (case-insensitive)

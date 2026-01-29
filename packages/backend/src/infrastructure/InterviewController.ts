@@ -130,7 +130,7 @@ export class InterviewController {
 
   private async getAllInterviews(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { company, role, status, recruiter, interviewType, attendees, dateFrom, dateTo, sortBy, sortOrder } = req.query;
+      const { company, role, status, recruiter, interviewType, attendees, dateFrom, dateTo, sortBy, sortOrder, page, pageSize } = req.query;
 
       // Build filter options
       const filters: any = {};
@@ -152,8 +152,26 @@ export class InterviewController {
         };
       }
 
-      const interviews = await this.interviewRepository.findAll(filters, sort);
-      res.json(interviews);
+      // Check if pagination is requested
+      if (page || pageSize) {
+        const pagination = {
+          page: page ? parseInt(page as string, 10) : 1,
+          pageSize: pageSize ? parseInt(pageSize as string, 10) : 20,
+        };
+
+        const result = await this.interviewRepository.findAllPaginated(filters, sort, pagination);
+        res.json({
+          items: result.items,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+          totalPages: result.totalPages
+        });
+      } else {
+        // No pagination - return all results
+        const interviews = await this.interviewRepository.findAll(filters, sort);
+        res.json(interviews);
+      }
     } catch (error) {
       next(error);
     }

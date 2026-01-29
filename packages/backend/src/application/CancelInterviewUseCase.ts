@@ -9,6 +9,7 @@
 import { IInterviewRepository } from './IInterviewRepository';
 import { IBidRepository } from './IBidRepository';
 import { ICompanyHistoryRepository } from './ICompanyHistoryRepository';
+import { CompanyHistory } from '../domain/CompanyHistory';
 import { CancellationReason } from '../domain/Interview';
 import { BidStatus } from '../domain/Bid';
 
@@ -26,7 +27,8 @@ export class CancelInterviewUseCase {
   constructor(
     private interviewRepository: IInterviewRepository,
     private bidRepository: IBidRepository,
-    private companyHistoryRepository: ICompanyHistoryRepository
+    private companyHistory: CompanyHistory,
+    private historyRepository: ICompanyHistoryRepository
   ) {}
 
   async execute(request: CancelInterviewRequest): Promise<CancelInterviewResponse> {
@@ -49,8 +51,8 @@ export class CancelInterviewUseCase {
         const bid = await this.bidRepository.findById(interview.bidId);
         if (bid) {
           // Only mark as INTERVIEW_FAILED if bid is in INTERVIEW_STAGE
-          if (bid.status === BidStatus.INTERVIEW_STAGE) {
-            bid.markAsInterviewFailed();
+          if (bid.bidStatus === BidStatus.INTERVIEW_STAGE) {
+            bid.markInterviewFailed();
             await this.bidRepository.update(bid);
           }
         }
@@ -58,13 +60,14 @@ export class CancelInterviewUseCase {
 
       // Record in company history
       const failureInfo = interview.getFailureInfo();
-      await this.companyHistoryRepository.recordFailure(
+      this.companyHistory.recordFailure(
         failureInfo.company,
         failureInfo.role,
-        interview.id,
         failureInfo.recruiter,
-        failureInfo.attendees
+        failureInfo.attendees,
+        interview.id
       );
+      await this.historyRepository.save(this.companyHistory);
 
       return {
         success: true,

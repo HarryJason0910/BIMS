@@ -1,6 +1,0 @@
-Perfect! Now the duplication detection works correctly:
-
-Backend: When a duplicate is detected (by link or company+role), the CreateBidUseCase throws an error and does NOT save the bid to the database
-Frontend: The error is displayed to the user in the error alert at the bottom of the form
-Tests: All unit tests have been updated and pass
-The critical issue is fixed - duplicates will no longer be saved to the database when duplication warnings are detected.

@@ -127,6 +127,7 @@ export class Container {
     this.cancelInterviewUseCase = new CancelInterviewUseCase(
       this.interviewRepository,
       this.bidRepository,
+      companyHistory,
       this.companyHistoryRepository
     );
 

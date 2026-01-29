@@ -104,7 +104,7 @@ export class BidController {
 
   private async getAllBids(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { company, role, status, dateFrom, dateTo, sortBy, sortOrder, mainStacks } = req.query;
+      const { company, role, status, dateFrom, dateTo, sortBy, sortOrder, mainStacks, page, pageSize } = req.query;
 
       // Build filter options
       const filters: any = {};
@@ -135,31 +135,72 @@ export class BidController {
         };
       }
 
-      const bids = await this.bidRepository.findAll(filters, sort);
-      
-      // Serialize bids to JSON to ensure proper field mapping
-      const serializedBids = bids.map(bid => ({
-        id: bid.id,
-        date: bid.date,
-        link: bid.link,
-        company: bid.company,
-        client: bid.client,
-        role: bid.role,
-        mainStacks: bid.mainStacks,
-        jobDescriptionPath: bid.jobDescriptionPath,
-        resumePath: bid.resumePath,
-        origin: bid.origin,
-        recruiter: bid.recruiter,
-        status: bid.bidStatus,  // Map bidStatus to status for frontend
-        interviewWinning: bid.interviewWinning,
-        bidDetail: bid.bidDetail,
-        resumeChecker: bid.resumeChecker,
-        originalBidId: bid.originalBidId,
-        rejectionReason: bid.rejectionReason,
-        hasBeenRebid: bid.hasBeenRebid
-      }));
-      
-      res.json(serializedBids);
+      // Check if pagination is requested
+      if (page || pageSize) {
+        const pagination = {
+          page: page ? parseInt(page as string, 10) : 1,
+          pageSize: pageSize ? parseInt(pageSize as string, 10) : 20,
+        };
+
+        const result = await this.bidRepository.findAllPaginated(filters, sort, pagination);
+        
+        // Serialize bids to JSON
+        const serializedBids = result.items.map(bid => ({
+          id: bid.id,
+          date: bid.date,
+          link: bid.link,
+          company: bid.company,
+          client: bid.client,
+          role: bid.role,
+          mainStacks: bid.mainStacks,
+          jobDescriptionPath: bid.jobDescriptionPath,
+          resumePath: bid.resumePath,
+          origin: bid.origin,
+          recruiter: bid.recruiter,
+          status: bid.bidStatus,
+          interviewWinning: bid.interviewWinning,
+          bidDetail: bid.bidDetail,
+          resumeChecker: bid.resumeChecker,
+          originalBidId: bid.originalBidId,
+          rejectionReason: bid.rejectionReason,
+          hasBeenRebid: bid.hasBeenRebid
+        }));
+        
+        res.json({
+          items: serializedBids,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+          totalPages: result.totalPages
+        });
+      } else {
+        // No pagination - return all results
+        const bids = await this.bidRepository.findAll(filters, sort);
+        
+        // Serialize bids to JSON to ensure proper field mapping
+        const serializedBids = bids.map(bid => ({
+          id: bid.id,
+          date: bid.date,
+          link: bid.link,
+          company: bid.company,
+          client: bid.client,
+          role: bid.role,
+          mainStacks: bid.mainStacks,
+          jobDescriptionPath: bid.jobDescriptionPath,
+          resumePath: bid.resumePath,
+          origin: bid.origin,
+          recruiter: bid.recruiter,
+          status: bid.bidStatus,  // Map bidStatus to status for frontend
+          interviewWinning: bid.interviewWinning,
+          bidDetail: bid.bidDetail,
+          resumeChecker: bid.resumeChecker,
+          originalBidId: bid.originalBidId,
+          rejectionReason: bid.rejectionReason,
+          hasBeenRebid: bid.hasBeenRebid
+        }));
+        
+        res.json(serializedBids);
+      }
     } catch (error) {
       next(error);
     }

@@ -1,0 +1,59 @@
+Job description
+About Trafilea
+Trafilea is a Consumer Tech Platform for Transformative Brand Growth. We’re building the AI Growth Engine that powers the next generation of consumer brands.
+
+With over $1B+ in cumulative revenue, 12M+ customers, and 500+ talents across 19 countries, we combine technology, growth marketing, and operational excellence to scale purpose-driven, digitally native brands.
+
+We own and operate our own digitally native brands (not an agency), with presence in Walmart, Nordstrom, and Amazon, and a strong global D2C footprint.
+
+Why Trafilea
+We’re a tech-led eCommerce group scaling our own globally loved DTC brands, while helping ambitious talent grow just as fast.
+
+🚀 We build and scale our own brands.
+
+🦾 We invest in AI and automation like few others in eCom.
+
+📈 We test fast, grow fast, and help you do the same.
+
+🤝 Be part of a dynamic, diverse, and talented global team.
+
+🌍 100% Remote, USD competitive salary, paid time off, and more.
+
+Key Responsibilities
+
+We are looking for a Sr Software Engineer Fullstack to develop scalable technology solutions to grow the business by creating innovative systems that add new features and improve existing ones. Collaborate with interdisciplinary teams of talented developers & business stakeholders to solve common goals.
+
+Participate in the processes of designing and planning software solutions.
+
+Suggest ideas, new solutions, or improvements to the current technology systems.
+
+Collaborate with the Product Improvement team and other stakeholders within Engineering (FrontEnd, BackEnd, UX, etc.) & Marketing to maintain a high bar for quality in a fast-paced, iterative environment
+
+Document the technical solutions with diagrams and the necessary documents for easy understanding by the other technical areas of the company.
+
+Advocate for improvements to product quality, security, and performance
+
+Craft code that meets our internal standards for style, maintainability, and best practices for a high-scale web environment. Maintain and advocate for these standards through code review.
+
+Recognize impediments to our efficiency as a team ("technical debt"), propose and implement solutions
+
+Job requirements
+5+ yers of experience with ReactJS
+
+5+ years of experience with Node.js experience
+
+Experience with with Google tag manager is a major plus
+
+Excellent abilities in barebones Typescript, HTML and CSS selectors
+
+Experience with tracking tools and pixels like Google tag manager, facebook pixel, Segment.io.
+
+Software development workflow knowledge: Git, CD/CI.
+
+Amazon Web Services knowledge.
+
+SCRUM Methodologies practitioner.
+
+Experience in eCommerce platform development, overall Shopper Journey, is needed.
+
+Experience with Tracking tools and analytics integration
