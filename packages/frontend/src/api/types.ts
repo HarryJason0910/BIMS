@@ -247,3 +247,17 @@ export interface SortOptions {
   field: string;
   order: 'asc' | 'desc';
 }
+
+// Pagination Types
+export interface PaginationOptions {
+  page: number;
+  pageSize: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}

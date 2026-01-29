@@ -19,7 +19,9 @@ import {
   CompleteInterviewResponse,
   InterviewFilters,
   CompanyHistory,
-  SortOptions
+  SortOptions,
+  PaginationOptions,
+  PaginatedResponse
 } from './types';
 
 /**
@@ -39,7 +41,8 @@ export class ApiClient {
   private maxRetries: number;
 
   constructor(config: ApiClientConfig = {}) {
-    const baseURL = config.baseURL || (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:3000';
+    // Use relative URL for production (served from same server) or env variable for development
+    const baseURL = config.baseURL || (import.meta as any).env.VITE_API_BASE_URL || '';
     
     this.client = axios.create({
       baseURL,
@@ -135,12 +138,14 @@ export class ApiClient {
   /**
    * Get all bids with optional filters and sorting
    */
-  async getBids(filters?: BidFilters, sort?: SortOptions): Promise<Bid[]> {
+  async getBids(filters?: BidFilters, sort?: SortOptions, pagination?: PaginationOptions): Promise<Bid[] | PaginatedResponse<Bid>> {
     return this.withRetry(async () => {
       const params: any = {
         ...filters,
         sortBy: sort?.field,
-        sortOrder: sort?.order
+        sortOrder: sort?.order,
+        page: pagination?.page,
+        pageSize: pagination?.pageSize
       };
       
       // Convert mainStacks array to JSON string for query parameter
@@ -148,7 +153,7 @@ export class ApiClient {
         params.mainStacks = JSON.stringify(filters.mainStacks);
       }
       
-      const response = await this.client.get<Bid[]>('/api/bids', { params });
+      const response = await this.client.get<Bid[] | PaginatedResponse<Bid>>('/api/bids', { params });
       return response.data;
     });
   }
@@ -277,15 +282,17 @@ export class ApiClient {
   /**
    * Get all interviews with optional filters and sorting
    */
-  async getInterviews(filters?: InterviewFilters, sort?: SortOptions): Promise<Interview[]> {
+  async getInterviews(filters?: InterviewFilters, sort?: SortOptions, pagination?: PaginationOptions): Promise<Interview[] | PaginatedResponse<Interview>> {
     return this.withRetry(async () => {
       const params = {
         ...filters,
         sortBy: sort?.field,
-        sortOrder: sort?.order
+        sortOrder: sort?.order,
+        page: pagination?.page,
+        pageSize: pagination?.pageSize
       };
       
-      const response = await this.client.get<Interview[]>('/api/interviews', { params });
+      const response = await this.client.get<Interview[] | PaginatedResponse<Interview>>('/api/interviews', { params });
       return response.data;
     });
   }

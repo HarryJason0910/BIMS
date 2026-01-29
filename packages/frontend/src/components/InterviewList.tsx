@@ -2,12 +2,12 @@ import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Paper, Chip, CircularProgress, Alert, Button, Box, Typography, IconButton, ButtonGroup, Snackbar 
+  Paper, Chip, CircularProgress, Alert, Button, Box, Typography, IconButton, ButtonGroup, Snackbar, Pagination 
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import { apiClient } from '../api';
-import { Interview, InterviewFilters, SortOptions, InterviewStatus, InterviewType, InterviewFailureReason, CancellationReason } from '../api/types';
+import { Interview, InterviewFilters, SortOptions, InterviewStatus, InterviewType, InterviewFailureReason, CancellationReason, PaginatedResponse } from '../api/types';
 import { InterviewFailureReasonModal } from './InterviewFailureReasonModal';
 import { InterviewCancellationReasonModal } from './InterviewCancellationReasonModal';
 
@@ -64,6 +64,8 @@ export const InterviewList: React.FC<InterviewListProps> = ({
   onInterviewSelect,
   onScheduleNext
 }) => {
+  const [page, setPage] = React.useState(1);
+  const [pageSize] = React.useState(20);
   const [expandedInterviewId, setExpandedInterviewId] = React.useState<string | null>(null);
   const [snackbarMessage, setSnackbarMessage] = React.useState<string>('');
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
@@ -74,10 +76,18 @@ export const InterviewList: React.FC<InterviewListProps> = ({
   const [processingInterviewId, setProcessingInterviewId] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
   
-  const { data: interviews, isLoading, error } = useQuery({
-    queryKey: ['interviews', filters, sort],
-    queryFn: () => apiClient.getInterviews(filters, sort)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['interviews', filters, sort, page, pageSize],
+    queryFn: () => apiClient.getInterviews(filters, sort, { page, pageSize })
   });
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setPage(1);
+  }, [filters, sort]);
+
+  const interviews = data && 'items' in data ? data.items : (data as Interview[] || []);
+  const paginationInfo = data && 'items' in data ? data as PaginatedResponse<Interview> : null;
 
   const handleViewFile = async (bidId: string, type: 'resume' | 'jd', e: React.MouseEvent) => {
     e.stopPropagation();
@@ -541,6 +551,22 @@ export const InterviewList: React.FC<InterviewListProps> = ({
           </TableBody>
         </Table>
       </TableContainer>
+
+      {paginationInfo && paginationInfo.totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+          <Pagination 
+            count={paginationInfo.totalPages} 
+            page={page} 
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+          <Typography variant="body2" color="text.secondary">
+            Showing {((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, paginationInfo.total)} of {paginationInfo.total} interviews
+          </Typography>
+        </Box>
+      )}
 
       <InterviewFailureReasonModal
         open={failureModalOpen}
