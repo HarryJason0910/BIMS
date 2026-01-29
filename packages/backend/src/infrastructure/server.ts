@@ -1,9 +1,12 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
 import { Container } from './container';
 import { BidController } from './BidController';
 import { InterviewController } from './InterviewController';
 import { CompanyHistoryController } from './CompanyHistoryController';
+import { TechStackController } from './TechStackController';
+import { AnalyticsController } from './AnalyticsController';
 
 export interface ServerConfig {
   port: number;
@@ -17,6 +20,8 @@ export class Server {
   private bidController!: BidController;
   private interviewController!: InterviewController;
   private companyHistoryController!: CompanyHistoryController;
+  private techStackController!: TechStackController;
+  private analyticsController!: AnalyticsController;
 
   constructor(config: ServerConfig, container: Container) {
     this.app = express();
@@ -41,13 +46,13 @@ export class Server {
     this.app.use(
       cors({
         origin: (origin, callback) => {
-          // Allow requests with no origin (like mobile apps or curl requests)
+          // Allow requests with no origin (same-origin requests, mobile apps, curl)
           if (!origin) return callback(null, true);
           
-          if (corsOrigins.includes(origin)) {
+          if (corsOrigins.includes(origin) || corsOrigins.includes('*')) {
             callback(null, true);
           } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, true); // Allow all origins in production mode when serving static files
           }
         },
         credentials: true,
@@ -73,11 +78,19 @@ export class Server {
     this.interviewController = new InterviewController(
       this.container.scheduleInterviewUseCase,
       this.container.completeInterviewUseCase,
+      this.container.cancelInterviewUseCase,
       this.container.interviewRepository
     );
 
     this.companyHistoryController = new CompanyHistoryController(
       this.container.companyHistoryRepository
+    );
+
+    this.techStackController = new TechStackController();
+
+    this.analyticsController = new AnalyticsController(
+      this.container.bidRepository,
+      this.container.interviewRepository
     );
   }
 
@@ -87,40 +100,50 @@ export class Server {
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
     });
 
-    // Email connection status endpoint
-    this.app.get('/api/email/status', async (_req: Request, res: Response) => {
-      try {
-        const isConnected = this.container.emailAdapter 
-          ? await this.container.emailAdapter.testConnection()
-          : false;
-        res.json({ 
-          connected: isConnected,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        res.json({ 
-          connected: false,
-          error: (error as Error).message,
-          timestamp: new Date().toISOString()
-        });
-      }
-    });
+    // File download endpoint
+    this.app.get('/api/files/:path', this.downloadFile.bind(this));
 
     // Mount controller routes
     this.app.use('/api/bids', this.bidController.getRouter());
     this.app.use('/api/interviews', this.interviewController.getRouter());
     this.app.use('/api/company-history', this.companyHistoryController.getRouter());
+    this.app.use('/api/tech-stacks', this.techStackController.getRouter());
+    this.app.use('/api/analytics', this.analyticsController.getRouter());
+
+    // Serve static files from frontend build
+    const frontendDistPath = path.join(__dirname, '../../../frontend/dist');
+    this.app.use(express.static(frontendDistPath));
+
+    // SPA fallback - serve index.html for all non-API routes
+    this.app.get('*', (req: Request, res: Response) => {
+      // Don't serve index.html for API routes
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: `API route ${req.method} ${req.path} not found`,
+        });
+      }
+      return res.sendFile(path.join(frontendDistPath, 'index.html'));
+    });
+  }
+
+  private async downloadFile(req: Request, res: Response): Promise<void> {
+    try {
+      const filePath = decodeURIComponent(req.params.path);
+      const fileBuffer = await this.container.fileStorageService.readResume(filePath);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filePath.split('/').pop()}"`);
+      res.send(fileBuffer);
+    } catch (error) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'File not found'
+      });
+    }
   }
 
   private setupErrorHandling(): void {
-    // 404 handler
-    this.app.use((req: Request, res: Response) => {
-      res.status(404).json({
-        error: 'Not Found',
-        message: `Route ${req.method} ${req.path} not found`,
-      });
-    });
-
     // Global error handler
     this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error:', err);

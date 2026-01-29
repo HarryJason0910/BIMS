@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Layout } from './components/Layout';
 import { BidDashboard } from './pages/BidDashboard';
 import { InterviewDashboard } from './pages/InterviewDashboard';
+import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
 
 const theme = createTheme({
   palette: {
@@ -26,6 +27,7 @@ function App() {
             <Route path="/" element={<Navigate to="/bids" replace />} />
             <Route path="/bids" element={<BidDashboard />} />
             <Route path="/interviews" element={<InterviewDashboard />} />
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
           </Routes>
         </Layout>
       </Router>

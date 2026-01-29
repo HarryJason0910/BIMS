@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
+import React, { useState, useCallback } from 'react';
+import { Box, Fab, Zoom } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { BidList } from '../components/BidList';
 import { BidForm } from '../components/BidForm';
@@ -37,79 +37,78 @@ export const BidDashboard: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewMode]);
 
-  const handleCreateSuccess = () => {
+  const handleCreateSuccess = useCallback(() => {
     setViewMode('list');
-  };
+  }, []);
 
-  const handleRebidClick = (bid: Bid) => {
+  const handleRebidClick = useCallback((bid: Bid) => {
     if (bid.interviewWinning) {
       alert('Cannot rebid: This bid has already won an interview');
       return;
     }
     setSelectedBid(bid);
     setViewMode('rebid');
-  };
+  }, []);
 
-  const handleRebidSuccess = () => {
+  const handleRebidSuccess = useCallback(() => {
     setViewMode('list');
     setSelectedBid(null);
-  };
+  }, []);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setViewMode('list');
     setSelectedBid(null);
-  };
+  }, []);
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Bid Dashboard
-        </Typography>
-        {viewMode === 'list' && (
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={() => setViewMode('create')}
-          >
-            Create New Bid
-          </Button>
-        )}
-      </Box>
-
+    <Box sx={{ position: 'relative', pb: 10 }}>
       {viewMode === 'list' && (
         <>
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <BidFilters
-              onFiltersChange={setFilters}
-              onSortChange={setSort}
-            />
-          </Paper>
+          <BidFilters
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+          />
           <BidList
             filters={filters}
             sort={sort}
             onRebid={handleRebidClick}
           />
+          
+          {/* Floating Action Button */}
+          <Zoom in={true}>
+            <Fab
+              color="primary"
+              aria-label="create bid"
+              onClick={() => setViewMode('create')}
+              sx={{
+                position: 'fixed',
+                bottom: 32,
+                right: 32,
+              }}
+            >
+              <AddIcon />
+            </Fab>
+          </Zoom>
         </>
       )}
 
       {viewMode === 'create' && (
-        <Paper sx={{ p: 3 }}>
+        <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
           <BidForm
             onSuccess={handleCreateSuccess}
             onCancel={handleCancel}
           />
-        </Paper>
+        </Box>
       )}
 
       {viewMode === 'rebid' && selectedBid && (
-        <Paper sx={{ p: 3 }}>
+        <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
           <RebidForm
             bid={selectedBid}
             onSuccess={handleRebidSuccess}
             onCancel={handleCancel}
           />
-        </Paper>
+        </Box>
       )}
     </Box>
   );

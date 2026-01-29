@@ -1,0 +1,70 @@
+ABOUT US
+
+Syniti, part of Capgemini, tackles the hardest work in data for the world’s largest organizations.  We combine intelligent software with deep data expertise to help the Fortune2000 tackle complex data challenges and drive measurable business outcomes with business-ready data.
+
+Syniti’s Data First strategy transforms data from an afterthought into a strategic asset—unlocking insights, reducing risk, and fueling growth. With over 5,000 successful projects, we support the full data lifecycle through a unified platform for migration, quality, replication, matching, master data management, analytics, governance, and strategy.
+
+Operating globally across industries, Syniti’s award-winning software, expert consultants give enterprises a unique edge in managing and maximizing their data.
+
+ 
+
+Syniti’s cloud-native platform sets new standards in enterprise data management, combining powerful SaaS solutions with deep domain expertise. Designed for agility and scale, our technology helps customers accelerate digital transformation, drive innovation, and make confident decisions with trusted data. Every product enhancement is built to solve real business challenges—empowering organizations to unlock value from their data faster and more effectively. 
+
+The ROLE
+
+The Senior Software Engineer assumes a leadership role in our technical endeavors, significantly shaping the architecture, design, and implementation of our systems. Apart from mastering our tech stack, they take pride in mentoring fellow engineers and proactively identifying areas of technical improvement, breaking down complex challenges into actionable tasks.
+
+WHAT YOU WILL DO
+
+· Lead technical projects, contributing to architecture, design, and system implementation
+
+· Address and reduce technical debt proactively
+
+· Mentor and guide less experienced engineers
+
+· Break down and delegate complex problems for team execution
+
+ 
+
+WHAT IT TAKES
+
+· 5+ years of relevant experience in full-stack software development
+
+· Advanced full-stack skills including Go or C#, AWS, React, and Typescript/JS
+
+· Advanced knowledge in SQL, NoSQL, or graph databases
+
+· Proficiency with CI/CD and DevOps techniques and best practices
+
+· Proficient in writing secure, production-ready code with a deep domain understanding
+
+· Demonstrated ability to lead, mentor, and think strategically
+
+· Operate with minimal supervision and be proactive in task leadership
+
+· Significant impact on product quality and design simplification
+
+Be fully aligned to our core values: 
+Think Big - Be courageous and bold. Aspire to greatness. Relentlessly pursue market innovation. Set the standard by which others follow. Create solutions that have a meaningful impact. Solve the challenges our customers don’t know they have. 
+Be Curious - Be a lifelong learner. Seek out new ideas to serve customers. Understand our competition and the world. Be permanently dissatisfied with the status quo. Challenge preconceptions. Focus on the future rather than yesterday. 
+Take Action - Be the first. Don’t wait. Take accountability. Inspire others by doing. Fail fast and learn from mistakes. Make a difference every day. 
+Stronger Together - Respect, trust and look out for each other. Celebrate diverse perspectives. Listen. Build connections and belonging. Act with integrity. Give back. One Syniti family. 
+WHAT WE OFFER
+
+Trust in your talent. At Syniti you will find a supportive environment and access to learning tools, but micromanagement is not our style.
+Growth. We are growing rapidly and steadily solving the biggest challenges enterprise companies are faced with today. There was never a better time to join and grow with us. Most importantly you will have the chance to shape our journey and share in our success story.
+Support. We all rely on each other and enable each other to be successful. You won’t stand alone.
+Curiosity and genuine interest in you. We all have our different stories, all equally fascinating with each depicting a different journey and we want to hear them all.
+Recognition. We are the sum of individual achievements, and we always take the time to celebrate them.
+An open organisation. Titles don’t define access at Syniti. We stay humble regardless of where we sit in the organisation. We want to hear every voice, listen to all the ideas and make sure everyone’s work is seen and valued.
+ 
+
+Our Commitment to Inclusion
+
+ 
+
+At Syniti, we’re committed to creating a respectful, inclusive, and fair workplace where everyone belongs and thrives. We believe that diverse perspectives make us stronger — and we value the unique backgrounds, experiences, and voices each person brings to our team.
+
+We welcome applicants based on their skills and potential, and we’re dedicated to ensuring equal opportunities for all, regardless of personal background. If you need accommodations during the hiring process, please let us know — we’re here to support you.
+
+

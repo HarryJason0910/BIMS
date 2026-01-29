@@ -1,4 +1,4 @@
-import { IInterviewRepository, InterviewFilterOptions, InterviewSortOptions } from '../application/IInterviewRepository';
+import { IInterviewRepository, InterviewFilterOptions, InterviewSortOptions, InterviewPaginationOptions, PaginatedInterviews } from '../application/IInterviewRepository';
 import { Interview } from '../domain/Interview';
 
 export class InMemoryInterviewRepository implements IInterviewRepository {
@@ -29,6 +29,21 @@ export class InMemoryInterviewRepository implements IInterviewRepository {
       }
       if (filters.status) {
         results = results.filter(interview => interview.status === filters.status);
+      }
+      if (filters.recruiter) {
+        results = results.filter(interview => 
+          interview.recruiter.toLowerCase().includes(filters.recruiter!.toLowerCase())
+        );
+      }
+      if (filters.interviewType) {
+        results = results.filter(interview => interview.interviewType === filters.interviewType);
+      }
+      if (filters.attendees) {
+        results = results.filter(interview => 
+          interview.attendees.some(attendee => 
+            attendee.toLowerCase().includes(filters.attendees!.toLowerCase())
+          )
+        );
       }
       if (filters.dateFrom) {
         results = results.filter(interview => interview.date >= filters.dateFrom!);
@@ -100,6 +115,25 @@ export class InMemoryInterviewRepository implements IInterviewRepository {
       throw new Error(`Interview with id ${id} not found`);
     }
     this.interviews.delete(id);
+  }
+
+  async findAllPaginated(filters?: InterviewFilterOptions, sort?: InterviewSortOptions, pagination?: InterviewPaginationOptions): Promise<PaginatedInterviews> {
+    // Get all filtered and sorted results
+    const allResults = await this.findAll(filters, sort);
+    
+    // Apply pagination
+    const page = pagination?.page || 1;
+    const pageSize = pagination?.pageSize || 20;
+    const skip = (page - 1) * pageSize;
+    const items = allResults.slice(skip, skip + pageSize);
+    
+    return {
+      items,
+      total: allResults.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(allResults.length / pageSize)
+    };
   }
 
   // Helper method for testing

@@ -1,0 +1,59 @@
+appId: com.jobbid.manager
+productName: Job Bid Manager
+electronVersion: 28.0.0
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - "!electron/tsconfig.json"
+  - ../backend/dist/**/*
+  - ../backend/package.json
+  - ../backend/.env.example
+
+extraResources:
+  - from: ../backend/dist
+    to: backend/dist
+  - from: ../backend/package.json
+    to: backend/package.json
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+  # Completely disable code signing
+  sign: null
+  signingHashAlgorithms:
+    - sha256
+  verifyUpdateCodeSignature: false
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+mac:
+  target:
+    - dmg
+    - zip
+  icon: build/icon.icns
+  category: public.app-category.productivity
+
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: build/icon.png
+  category: Office
+
+# Disable all code signing
+forceCodeSigning: false

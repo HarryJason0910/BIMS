@@ -5,7 +5,7 @@
  * and business logic.
  */
 
-import { Bid, BidStatus, ResumeCheckerType, CreateBidData } from './Bid';
+import { Bid, BidStatus, ResumeCheckerType, CreateBidData, BidOrigin } from './Bid';
 
 describe('Bid Unit Tests', () => {
   // Helper function to create valid bid data
@@ -16,7 +16,8 @@ describe('Bid Unit Tests', () => {
     role: 'Software Engineer',
     mainStacks: ['TypeScript', 'React', 'Node.js'],
     jobDescriptionPath: 'Tech_Corp_Software_Engineer/JD.txt',
-    resumePath: 'Tech_Corp_Software_Engineer/resume.pdf'
+    resumePath: 'Tech_Corp_Software_Engineer/resume.pdf',
+    origin: BidOrigin.BID
   });
 
   describe('Bid Creation', () => {
@@ -58,6 +59,35 @@ describe('Bid Unit Tests', () => {
       const bid = Bid.create(bidData);
 
       expect(bid.originalBidId).toBe('bid-123');
+    });
+
+    it('should create bid with BID origin and no recruiter', () => {
+      const bidData = { ...createValidBidData(), origin: BidOrigin.BID };
+      const bid = Bid.create(bidData);
+
+      expect(bid.origin).toBe(BidOrigin.BID);
+      expect(bid.recruiter).toBeNull();
+    });
+
+    it('should create bid with LINKEDIN origin and recruiter', () => {
+      const bidData = { ...createValidBidData(), origin: BidOrigin.LINKEDIN, recruiter: 'John Doe' };
+      const bid = Bid.create(bidData);
+
+      expect(bid.origin).toBe(BidOrigin.LINKEDIN);
+      expect(bid.recruiter).toBe('John Doe');
+    });
+
+    it('should throw error when origin is LINKEDIN but recruiter is missing', () => {
+      const bidData = { ...createValidBidData(), origin: BidOrigin.LINKEDIN };
+      
+      expect(() => Bid.create(bidData)).toThrow('Recruiter name is required when origin is LINKEDIN');
+    });
+
+    it('should throw error when origin is missing', () => {
+      const bidData = { ...createValidBidData() };
+      delete (bidData as any).origin;
+      
+      expect(() => Bid.create(bidData)).toThrow('Bid origin is required');
     });
   });
 

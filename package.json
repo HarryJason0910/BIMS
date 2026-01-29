@@ -9,6 +9,8 @@
   "scripts": {
     "install:all": "npm install",
     "build": "npm run build --workspaces",
+    "build:prod": "npm run build --workspace=packages/frontend && npm run build --workspace=packages/backend",
+    "start:prod": "npm run start --workspace=packages/backend",
     "test": "npm run test --workspaces",
     "lint": "npm run lint --workspaces",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

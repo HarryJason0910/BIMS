@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Tabs, Tab, Container, Box, Chip, Tooltip } from '@mui/material';
+import { AppBar, Toolbar, Typography, Tabs, Tab, Container, Box } from '@mui/material';
 import WorkIcon from '@mui/icons-material/Work';
 import EventIcon from '@mui/icons-material/Event';
-import EmailIcon from '@mui/icons-material/Email';
-import { apiClient } from '../api';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,63 +11,11 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const currentTab = location.pathname === '/bids' ? 0 : 1;
-  const [emailConnected, setEmailConnected] = useState<boolean | null>(null);
-  const [emailError, setEmailError] = useState<string>('');
-
-  useEffect(() => {
-    // Check email status on mount and every 30 seconds
-    const checkEmailStatus = async () => {
-      try {
-        const status = await apiClient.getEmailStatus();
-        setEmailConnected(status.connected);
-        setEmailError(status.error || '');
-      } catch (error) {
-        setEmailConnected(false);
-        setEmailError('Failed to check status');
-      }
-    };
-
-    checkEmailStatus();
-    const interval = setInterval(checkEmailStatus, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const getEmailStatusChip = () => {
-    if (emailConnected === null) {
-      return (
-        <Chip
-          icon={<EmailIcon />}
-          size="small"
-          sx={{ ml: 2 }}
-        />
-      );
-    }
-
-    if (emailConnected) {
-      return (
-        <Tooltip title="Email integration is active">
-          <Chip
-            icon={<EmailIcon />}
-            color="success"
-            size="small"
-            sx={{ ml: 2 }}
-          />
-        </Tooltip>
-      );
-    }
-
-    return (
-      <Tooltip title={emailError || 'Email integration is not configured'}>
-        <Chip
-          icon={<EmailIcon />}
-          color="error"
-          size="small"
-          sx={{ ml: 2 }}
-        />
-      </Tooltip>
-    );
+  const getCurrentTab = () => {
+    if (location.pathname === '/bids') return 0;
+    if (location.pathname === '/interviews') return 1;
+    if (location.pathname === '/analytics') return 2;
+    return 0;
   };
 
   return (
@@ -78,8 +25,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Job Bid & Interview Manager
           </Typography>
-          {getEmailStatusChip()}
-          <Tabs value={currentTab} textColor="inherit" indicatorColor="secondary" sx={{ ml: 2 }}>
+          <Tabs value={getCurrentTab()} textColor="inherit" indicatorColor="secondary">
             <Tab 
               label="Bids" 
               icon={<WorkIcon />} 
@@ -93,6 +39,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               iconPosition="start"
               component={Link} 
               to="/interviews"
+            />
+            <Tab 
+              label="Analytics" 
+              icon={<AnalyticsIcon />} 
+              iconPosition="start"
+              component={Link} 
+              to="/analytics"
             />
           </Tabs>
         </Toolbar>

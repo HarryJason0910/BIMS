@@ -2,6 +2,7 @@ import { IInterviewRepository } from './IInterviewRepository';
 import { IBidRepository } from './IBidRepository';
 import { ICompanyHistoryRepository } from './ICompanyHistoryRepository';
 import { CompanyHistory } from '../domain/CompanyHistory';
+import { InterviewFailureReason, InterviewType } from '../domain/Interview';
 
 /**
  * Request interface for completing an interview
@@ -10,6 +11,7 @@ export interface CompleteInterviewRequest {
   interviewId: string;
   success: boolean;
   detail?: string;
+  failureReason?: InterviewFailureReason;
 }
 
 /**
@@ -50,7 +52,7 @@ export class CompleteInterviewUseCase {
     }
 
     // 2. Mark interview as completed with success/failure
-    interview.markAsCompleted(request.success);
+    interview.markAsCompleted(request.success, request.failureReason);
 
     // 3. Update detail if provided
     if (request.detail) {
@@ -81,12 +83,25 @@ export class CompleteInterviewUseCase {
       historyUpdated = true;
     }
 
-    // 7. If interview succeeded and has bidId, update bid status to CLOSED
-    if (request.success && interview.bidId) {
+    // 7. Update bid status based on interview outcome
+    // - If interview FAILED: mark bid as INTERVIEW_FAILED
+    // - If interview PASSED and it's CLIENT_INTERVIEW (final stage): mark bid as CLOSED
+    // - If interview PASSED but not final stage: keep bid in INTERVIEW_STAGE (more rounds to come)
+    if (interview.bidId) {
       const bid = await this.bidRepository.findById(interview.bidId);
       if (bid) {
-        bid.markAsClosed();
-        await this.bidRepository.update(bid);
+        if (request.success) {
+          // Only close bid if this is the final interview stage (CLIENT_INTERVIEW)
+          if (interview.interviewType === InterviewType.CLIENT_INTERVIEW) {
+            bid.markAsClosed();
+            await this.bidRepository.update(bid);
+          }
+          // Otherwise, keep bid in INTERVIEW_STAGE for subsequent interview rounds
+        } else {
+          // Interview failed - mark bid as INTERVIEW_FAILED
+          bid.markInterviewFailed();
+          await this.bidRepository.update(bid);
+        }
       }
     }
 

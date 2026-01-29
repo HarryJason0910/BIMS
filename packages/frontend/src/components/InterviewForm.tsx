@@ -6,24 +6,58 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { apiClient } from '../api';
-import { ScheduleInterviewRequest, InterviewBase } from '../api/types';
+import { ScheduleInterviewRequest, InterviewBase, InterviewType, BidStatus, Role, Interview } from '../api/types';
 
 interface InterviewFormProps {
+  baseInterview?: Interview; // Optional: if provided, pre-fill form for next interview
+  rescheduleInterview?: Interview; // Optional: if provided, pre-fill form for rescheduling same interview
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCancel }) => {
+// Helper function to get next interview type
+const getNextInterviewType = (currentType: InterviewType): InterviewType | null => {
+  switch (currentType) {
+    case InterviewType.HR:
+      return InterviewType.TECH_INTERVIEW_1;
+    case InterviewType.TECH_INTERVIEW_1:
+      return InterviewType.TECH_INTERVIEW_2;
+    case InterviewType.TECH_INTERVIEW_2:
+      return InterviewType.TECH_INTERVIEW_3;
+    case InterviewType.TECH_INTERVIEW_3:
+      return InterviewType.FINAL_INTERVIEW;
+    case InterviewType.FINAL_INTERVIEW:
+      return InterviewType.CLIENT_INTERVIEW;
+    case InterviewType.CLIENT_INTERVIEW:
+      return null;
+    default:
+      return null;
+  }
+};
+
+export const InterviewForm: React.FC<InterviewFormProps> = ({ baseInterview, rescheduleInterview, onSuccess, onCancel }) => {
   const queryClient = useQueryClient();
-  const [base, setBase] = useState<InterviewBase>(InterviewBase.BID);
-  const [selectedBidId, setSelectedBidId] = useState<string>('');
+  
+  // Determine which interview to use for pre-filling
+  const sourceInterview = rescheduleInterview || baseInterview;
+  
+  // Check if we're in reschedule mode
+  const isRescheduleMode = !!rescheduleInterview;
+  
+  const [base, setBase] = useState<InterviewBase>(sourceInterview?.base || InterviewBase.BID);
+  const [selectedBidId, setSelectedBidId] = useState<string>(sourceInterview?.bidId || '');
   const [formData, setFormData] = useState<ScheduleInterviewRequest>({
-    base: InterviewBase.BID,
-    recruiter: '',
-    attendees: [],
-    interviewType: '',
-    date: new Date().toISOString().split('T')[0],
-    detail: ''
+    base: sourceInterview?.base || InterviewBase.BID,
+    bidId: sourceInterview?.bidId,
+    recruiter: sourceInterview?.recruiter || '',
+    attendees: rescheduleInterview?.attendees || [], // Pre-fill attendees for reschedule
+    interviewType: rescheduleInterview 
+      ? rescheduleInterview.interviewType // Keep same type for reschedule
+      : baseInterview 
+        ? (getNextInterviewType(baseInterview.interviewType) || InterviewType.HR) // Next type for schedule next
+        : InterviewType.HR, // Default for new interview
+    date: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:mm
+    baseInterviewId: baseInterview?.id // Pass the base interview ID if scheduling next (not for reschedule)
   });
   const [attendeeInput, setAttendeeInput] = useState('');
   const [eligibilityMessage, setEligibilityMessage] = useState<string>('');
@@ -33,6 +67,28 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
     queryFn: () => apiClient.getBids(),
     enabled: base === InterviewBase.BID
   });
+
+  const { data: allInterviews } = useQuery({
+    queryKey: ['all-interviews'],
+    queryFn: () => apiClient.getInterviews(),
+    enabled: base === InterviewBase.BID
+  });
+
+  // Filter out bids that already have interviews or are rejected
+  const availableBids = React.useMemo(() => {
+    if (!bids || !allInterviews) return [];
+    
+    const bidIdsWithInterviews = new Set(
+      allInterviews
+        .filter(interview => interview.bidId)
+        .map(interview => interview.bidId)
+    );
+    
+    return bids.filter(bid => 
+      !bidIdsWithInterviews.has(bid.id) && 
+      bid.status !== BidStatus.REJECTED
+    );
+  }, [bids, allInterviews]);
 
   const scheduleInterviewMutation = useMutation({
     mutationFn: (data: ScheduleInterviewRequest) => apiClient.scheduleInterview(data),
@@ -47,8 +103,8 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
   });
 
   useEffect(() => {
-    if (base === InterviewBase.BID && selectedBidId && bids) {
-      const selectedBid = bids.find(b => b.id === selectedBidId);
+    if (base === InterviewBase.BID && selectedBidId && availableBids) {
+      const selectedBid = availableBids.find(b => b.id === selectedBidId);
       if (selectedBid) {
         setFormData(prev => ({
           ...prev,
@@ -66,10 +122,16 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
         bidId: undefined
       }));
     }
-  }, [base, selectedBidId, bids]);
+  }, [base, selectedBidId, availableBids]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission
+    if (scheduleInterviewMutation.isPending) {
+      return;
+    }
+    
     scheduleInterviewMutation.mutate(formData);
   };
 
@@ -103,8 +165,14 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
   return (
     <Box>
       <Typography variant="h5" gutterBottom>
-        Schedule Interview
+        {isRescheduleMode ? 'Reschedule Interview' : 'Schedule Interview'}
       </Typography>
+
+      {isRescheduleMode && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Rescheduling interview - only date and attendees can be modified
+        </Alert>
+      )}
 
       {eligibilityMessage && (
         <Alert 
@@ -118,7 +186,7 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
       <Box component="form" onSubmit={handleSubmit} noValidate>
         <Grid container spacing={2}>
           <Grid item xs={12}>
-            <FormControl fullWidth>
+            <FormControl fullWidth disabled={isRescheduleMode}>
               <InputLabel>Interview Base</InputLabel>
               <Select
                 value={base}
@@ -133,7 +201,7 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
 
           {base === InterviewBase.BID && (
             <Grid item xs={12}>
-              <FormControl fullWidth required>
+              <FormControl fullWidth required disabled={isRescheduleMode}>
                 <InputLabel>Select Bid</InputLabel>
                 <Select
                   value={selectedBidId}
@@ -144,15 +212,19 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
                     if (!selected) {
                       return <span style={{ color: '#9e9e9e' }}>Select Bid</span>;
                     }
-                    const selectedBid = bids?.find(b => b.id === selected);
+                    const selectedBid = availableBids?.find(b => b.id === selected);
                     return selectedBid ? `${selectedBid.company} - ${selectedBid.role} (${new Date(selectedBid.date).toLocaleDateString()})` : '';
                   }}
                 >
-                  {bids?.map(bid => (
-                    <MenuItem key={bid.id} value={bid.id}>
-                      {bid.company} - {bid.role} ({new Date(bid.date).toLocaleDateString()})
-                    </MenuItem>
-                  ))}
+                  {availableBids && availableBids.length > 0 ? (
+                    availableBids.map(bid => (
+                      <MenuItem key={bid.id} value={bid.id}>
+                        {bid.company} - {bid.role} ({new Date(bid.date).toLocaleDateString()})
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>No bids available (all bids already have interviews)</MenuItem>
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -168,6 +240,7 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
                   value={formData.company || ''}
                   onChange={handleChange}
                   required
+                  disabled={isRescheduleMode}
                 />
               </Grid>
 
@@ -179,18 +252,26 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
                   value={formData.client || ''}
                   onChange={handleChange}
                   required
+                  disabled={isRescheduleMode}
                 />
               </Grid>
 
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Role"
-                  name="role"
-                  value={formData.role || ''}
-                  onChange={handleChange}
-                  required
-                />
+                <FormControl fullWidth required disabled={isRescheduleMode}>
+                  <InputLabel>Role</InputLabel>
+                  <Select
+                    name="role"
+                    value={formData.role || ''}
+                    label="Role"
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  >
+                    {Object.values(Role).map((role) => (
+                      <MenuItem key={role} value={role}>
+                        {role}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
             </>
           )}
@@ -203,19 +284,27 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
               value={formData.recruiter}
               onChange={handleChange}
               required
+              disabled={isRescheduleMode}
             />
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Interview Type"
-              name="interviewType"
-              value={formData.interviewType}
-              onChange={handleChange}
-              required
-              placeholder="e.g., HR, Technical, Final"
-            />
+            <FormControl fullWidth required disabled={isRescheduleMode}>
+              <InputLabel>Interview Type</InputLabel>
+              <Select
+                name="interviewType"
+                value={formData.interviewType}
+                label="Interview Type"
+                onChange={(e) => setFormData({ ...formData, interviewType: e.target.value as InterviewType })}
+              >
+                <MenuItem value={InterviewType.HR}>HR</MenuItem>
+                <MenuItem value={InterviewType.TECH_INTERVIEW_1}>Tech Interview 1</MenuItem>
+                <MenuItem value={InterviewType.TECH_INTERVIEW_2}>Tech Interview 2</MenuItem>
+                <MenuItem value={InterviewType.TECH_INTERVIEW_3}>Tech Interview 3</MenuItem>
+                <MenuItem value={InterviewType.FINAL_INTERVIEW}>Final Interview</MenuItem>
+                <MenuItem value={InterviewType.CLIENT_INTERVIEW}>Client Interview</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
 
           <Grid item xs={12}>
@@ -223,7 +312,7 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
               <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
                 <TextField
                   fullWidth
-                  label="Attendees"
+                  label={formData.interviewType === InterviewType.HR ? "Attendees (Optional for HR)" : "Attendees"}
                   value={attendeeInput}
                   onChange={(e) => setAttendeeInput(e.target.value)}
                   onKeyPress={(e) => {
@@ -233,6 +322,7 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
                     }
                   }}
                   placeholder="Add an attendee"
+                  helperText={formData.interviewType === InterviewType.HR ? "HR interviews typically don't require attendees" : "Add names of people who will attend the interview"}
                 />
                 <Button 
                   variant="outlined" 
@@ -259,26 +349,13 @@ export const InterviewForm: React.FC<InterviewFormProps> = ({ onSuccess, onCance
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Interview Date"
+              label="Interview Date & Time"
               name="date"
-              type="date"
+              type="datetime-local"
               value={formData.date}
               onChange={handleChange}
               required
               InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Details"
-              name="detail"
-              value={formData.detail}
-              onChange={handleChange}
-              multiline
-              rows={4}
-              placeholder="Additional notes about the interview"
             />
           </Grid>
 

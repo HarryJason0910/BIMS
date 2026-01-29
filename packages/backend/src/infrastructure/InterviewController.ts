@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import { ScheduleInterviewUseCase } from '../application/ScheduleInterviewUseCase';
 import { CompleteInterviewUseCase } from '../application/CompleteInterviewUseCase';
+import { CancelInterviewUseCase } from '../application/CancelInterviewUseCase';
 import { IInterviewRepository } from '../application/IInterviewRepository';
-import { InterviewBase } from '../domain/Interview';
+import { InterviewBase, CancellationReason } from '../domain/Interview';
 
 export class InterviewController {
   private router: Router;
@@ -10,6 +11,7 @@ export class InterviewController {
   constructor(
     private scheduleInterviewUseCase: ScheduleInterviewUseCase,
     private completeInterviewUseCase: CompleteInterviewUseCase,
+    private cancelInterviewUseCase: CancelInterviewUseCase,
     private interviewRepository: IInterviewRepository
   ) {
     this.router = Router();
@@ -23,6 +25,8 @@ export class InterviewController {
     this.router.post('/:id/attend', this.markAttended.bind(this));
     this.router.post('/:id/close', this.closeInterview.bind(this));
     this.router.post('/:id/complete', this.completeInterview.bind(this));
+    this.router.post('/:id/cancel', this.cancelInterview.bind(this));
+    this.router.post('/:id/revert-cancel', this.revertCancellation.bind(this));
     this.router.put('/:id', this.updateInterview.bind(this));
     this.router.delete('/:id', this.deleteInterview.bind(this));
   }
@@ -41,21 +45,33 @@ export class InterviewController {
         recruiter,
         attendees,
         detail,
+        baseInterviewId,
+        date,
       } = req.body;
 
       // Validate required fields
-      if (!base || !interviewType || !recruiter || !attendees || !detail) {
+      if (!base || !interviewType || !recruiter) {
         res.status(400).json({
           error: 'Validation Error',
-          message: 'Missing required fields: base, interviewType, recruiter, attendees, detail',
+          message: 'Missing required fields: base, interviewType, recruiter',
         });
         return;
       }
 
+      // Validate attendees array exists (but can be empty for HR interviews)
       if (!Array.isArray(attendees)) {
         res.status(400).json({
           error: 'Validation Error',
           message: 'attendees must be an array',
+        });
+        return;
+      }
+
+      // For non-HR interviews, attendees are required
+      if (interviewType !== 'HR' && attendees.length === 0) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'attendees are required for non-HR interviews',
         });
         return;
       }
@@ -101,7 +117,9 @@ export class InterviewController {
         interviewType,
         recruiter,
         attendees,
-        detail,
+        detail: detail || '', // Optional - defaults to empty string
+        baseInterviewId, // Pass the base interview ID if provided
+        date, // Pass the interview date if provided
       });
 
       res.status(201).json(result);
@@ -112,13 +130,16 @@ export class InterviewController {
 
   private async getAllInterviews(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { company, role, status, dateFrom, dateTo, sortBy, sortOrder } = req.query;
+      const { company, role, status, recruiter, interviewType, attendees, dateFrom, dateTo, sortBy, sortOrder, page, pageSize } = req.query;
 
       // Build filter options
       const filters: any = {};
       if (company) filters.company = company as string;
       if (role) filters.role = role as string;
       if (status) filters.status = status as string;
+      if (recruiter) filters.recruiter = recruiter as string;
+      if (interviewType) filters.interviewType = interviewType as string;
+      if (attendees) filters.attendees = attendees as string;
       if (dateFrom) filters.dateFrom = new Date(dateFrom as string);
       if (dateTo) filters.dateTo = new Date(dateTo as string);
 
@@ -131,8 +152,26 @@ export class InterviewController {
         };
       }
 
-      const interviews = await this.interviewRepository.findAll(filters, sort);
-      res.json(interviews);
+      // Check if pagination is requested
+      if (page || pageSize) {
+        const pagination = {
+          page: page ? parseInt(page as string, 10) : 1,
+          pageSize: pageSize ? parseInt(pageSize as string, 10) : 20,
+        };
+
+        const result = await this.interviewRepository.findAllPaginated(filters, sort, pagination);
+        res.json({
+          items: result.items,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+          totalPages: result.totalPages
+        });
+      } else {
+        // No pagination - return all results
+        const interviews = await this.interviewRepository.findAll(filters, sort);
+        res.json(interviews);
+      }
     } catch (error) {
       next(error);
     }
@@ -206,7 +245,7 @@ export class InterviewController {
   private async completeInterview(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const { success, detail } = req.body;
+      const { success, detail, failureReason } = req.body;
 
       if (typeof success !== 'boolean') {
         res.status(400).json({
@@ -220,9 +259,66 @@ export class InterviewController {
         interviewId: id,
         success,
         detail,
+        failureReason,
       });
 
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async cancelInterview(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { cancellationReason } = req.body;
+
+      // Validate cancellation reason
+      if (!cancellationReason) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'cancellationReason is required',
+        });
+        return;
+      }
+
+      if (cancellationReason !== CancellationReason.ROLE_CLOSED && 
+          cancellationReason !== CancellationReason.RESCHEDULED) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'cancellationReason must be either "Role Closed" or "Rescheduled"',
+        });
+        return;
+      }
+
+      const result = await this.cancelInterviewUseCase.execute({
+        interviewId: id,
+        cancellationReason
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async revertCancellation(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const interview = await this.interviewRepository.findById(id);
+
+      if (!interview) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: `Interview with id ${id} not found`,
+        });
+        return;
+      }
+
+      interview.revertCancellation();
+      
+      await this.interviewRepository.update(interview);
+      res.json({ success: true, status: interview.status });
     } catch (error) {
       next(error);
     }
@@ -241,9 +337,11 @@ export class InterviewController {
         return;
       }
 
-      // Update allowed fields
-      const updates = req.body;
-      Object.assign(interview, updates);
+      // Update detail field using the domain method
+      const { detail } = req.body;
+      if (detail !== undefined) {
+        interview.updateDetail(detail);
+      }
 
       await this.interviewRepository.update(interview);
       res.json(interview);

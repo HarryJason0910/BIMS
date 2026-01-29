@@ -1,6 +1,6 @@
 import { Collection, ObjectId } from 'mongodb';
-import { IInterviewRepository, InterviewFilterOptions, InterviewSortOptions } from '../application/IInterviewRepository';
-import { Interview, InterviewBase, InterviewStatus } from '../domain/Interview';
+import { IInterviewRepository, InterviewFilterOptions, InterviewSortOptions, InterviewPaginationOptions, PaginatedInterviews } from '../application/IInterviewRepository';
+import { Interview, InterviewBase, InterviewStatus, InterviewType } from '../domain/Interview';
 import { MongoDBConnection } from './MongoDBConnection';
 
 /**
@@ -21,7 +21,10 @@ interface InterviewDocument {
   attendees: string[];
   status: string;
   detail: string;
+  failureReason: string | null;
   bidId: string | null;
+  hasScheduledNext: boolean;
+  cancellationReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,7 +71,10 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
       attendees: json.attendees,
       status: json.status,
       detail: json.detail,
+      failureReason: json.failureReason,
       bidId: json.bidId,
+      hasScheduledNext: json.hasScheduledNext,
+      cancellationReason: json.cancellationReason,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -87,18 +93,22 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
       role: doc.role,
       jobDescription: doc.jobDescription,
       resume: doc.resume,
-      interviewType: doc.interviewType,
+      interviewType: doc.interviewType as InterviewType,
       recruiter: doc.recruiter,
       attendees: doc.attendees,
       detail: doc.detail,
       bidId: doc.bidId || undefined,
+      date: doc.date, // Pass the stored date from database
     });
 
     // Use Object.defineProperty to set private fields and readonly fields
     Object.defineProperty(interview, 'id', { value: doc._id.toString(), writable: false });
-    Object.defineProperty(interview, 'date', { value: doc.date, writable: false });
+    // Note: date is already set correctly in Interview.create() above
     Object.defineProperty(interview, '_status', { value: doc.status as InterviewStatus, writable: true });
     Object.defineProperty(interview, '_detail', { value: doc.detail, writable: true });
+    Object.defineProperty(interview, '_failureReason', { value: doc.failureReason, writable: true });
+    Object.defineProperty(interview, '_hasScheduledNext', { value: doc.hasScheduledNext || false, writable: true });
+    Object.defineProperty(interview, '_cancellationReason', { value: doc.cancellationReason || null, writable: true });
 
     return interview;
   }
@@ -139,6 +149,15 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
       if (filters.status) {
         query.status = filters.status;
       }
+      if (filters.recruiter) {
+        query.recruiter = { $regex: new RegExp(filters.recruiter, 'i') };
+      }
+      if (filters.interviewType) {
+        query.interviewType = filters.interviewType;
+      }
+      if (filters.attendees) {
+        query.attendees = { $elemMatch: { $regex: new RegExp(filters.attendees, 'i') } };
+      }
       if (filters.dateFrom || filters.dateTo) {
         query.date = {};
         if (filters.dateFrom) {
@@ -164,8 +183,8 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
 
   async findByCompanyAndRole(company: string, role: string): Promise<Interview[]> {
     const docs = await this.collection.find({
-      company: { $regex: new RegExp(`^${company}$`, 'i') },
-      role: { $regex: new RegExp(`^${role}$`, 'i') },
+      company: { $regex: new RegExp(`^${company}`, 'i') },
+      role: { $regex: new RegExp(`^${role}`, 'i') },
     }).toArray();
     return docs.map(doc => this.toDomain(doc));
   }
@@ -194,5 +213,71 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
     await this.collection.deleteOne({ 
       _id: new ObjectId(id.replace('interview-', '')) 
     });
+  }
+
+  async findAllPaginated(filters?: InterviewFilterOptions, sort?: InterviewSortOptions, pagination?: InterviewPaginationOptions): Promise<PaginatedInterviews> {
+    const query: any = {};
+
+    // Apply filters (same as findAll)
+    if (filters) {
+      if (filters.company) {
+        query.company = { $regex: new RegExp(filters.company, 'i') };
+      }
+      if (filters.role) {
+        query.role = { $regex: new RegExp(filters.role, 'i') };
+      }
+      if (filters.status) {
+        query.status = filters.status;
+      }
+      if (filters.recruiter) {
+        query.recruiter = { $regex: new RegExp(filters.recruiter, 'i') };
+      }
+      if (filters.interviewType) {
+        query.interviewType = filters.interviewType;
+      }
+      if (filters.attendees) {
+        query.attendees = { $elemMatch: { $regex: new RegExp(filters.attendees, 'i') } };
+      }
+      if (filters.dateFrom || filters.dateTo) {
+        query.date = {};
+        if (filters.dateFrom) {
+          query.date.$gte = filters.dateFrom;
+        }
+        if (filters.dateTo) {
+          query.date.$lte = filters.dateTo;
+        }
+      }
+    }
+
+    // Build sort options
+    const sortOptions: any = {};
+    if (sort) {
+      sortOptions[sort.field] = sort.order === 'asc' ? 1 : -1;
+    } else {
+      sortOptions.createdAt = -1;
+    }
+
+    // Get total count
+    const total = await this.collection.countDocuments(query);
+
+    // Apply pagination
+    const page = pagination?.page || 1;
+    const pageSize = pagination?.pageSize || 20;
+    const skip = (page - 1) * pageSize;
+
+    const docs = await this.collection
+      .find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(pageSize)
+      .toArray();
+
+    return {
+      items: docs.map(doc => this.toDomain(doc)),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize)
+    };
   }
 }

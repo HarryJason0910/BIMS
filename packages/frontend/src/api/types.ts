@@ -8,7 +8,60 @@ export enum BidStatus {
   SUBMITTED = 'SUBMITTED',
   REJECTED = 'REJECTED',
   INTERVIEW_STAGE = 'INTERVIEW_STAGE',
+  INTERVIEW_FAILED = 'INTERVIEW_FAILED',
   CLOSED = 'CLOSED'
+}
+
+export enum Role {
+  FULL_STACK_ENGINEER = 'Full Stack Engineer',
+  FULL_STACK_DEVELOPER = 'Full Stack Developer',
+  FRONTEND_ENGINEER = 'Frontend Engineer',
+  FRONTEND_DEVELOPER = 'Frontend Developer',
+  BACKEND_ENGINEER = 'Backend Engineer',
+  BACKEND_DEVELOPER = 'Backend Developer',
+  DEVOPS_ENGINEER = 'DevOps Engineer',
+  CLOUD_INFRASTRUCTURE_ENGINEER = 'Cloud Infrastructure Engineer',
+  QA_AUTOMATION_ENGINEER = 'QA Automation Engineer',
+  SOFTWARE_ENGINEER = 'Software Engineer',
+  SOFTWARE_DEVELOPER = 'Software Developer',
+  SENIOR_SOFTWARE_ENGINEER = 'Senior Software Engineer',
+  LEAD_SOFTWARE_ENGINEER = 'Lead Software Engineer',
+  PRINCIPAL_ENGINEER = 'Principal Engineer',
+  STAFF_ENGINEER = 'Staff Engineer',
+  SOLUTIONS_ARCHITECT = 'Solutions Architect',
+  TECHNICAL_ARCHITECT = 'Technical Architect',
+  DATA_ENGINEER = 'Data Engineer',
+  MACHINE_LEARNING_ENGINEER = 'Machine Learning Engineer',
+  MOBILE_ENGINEER = 'Mobile Engineer',
+  SITE_RELIABILITY_ENGINEER = 'Site Reliability Engineer'
+}
+
+export enum RejectionReason {
+  ROLE_CLOSED = 'Role Closed',
+  UNSATISFIED_RESUME = 'Unsatisfied Resume'
+}
+
+export enum HRFailureReason {
+  BILINGUAL = 'Bilingual',
+  NOT_REMOTE = 'Not Remote',
+  SELF_MISTAKE = 'Self Mistake'
+}
+
+export enum TechFailureReason {
+  LIVE_CODING = 'Live Coding',
+  ANSWERING = 'Answering'
+}
+
+export enum FinalClientFailureReason {
+  BACKGROUND_CHECK = 'Background Check',
+  CONVERSATION_ISSUE = 'Conversation Issue'
+}
+
+export type InterviewFailureReason = HRFailureReason | TechFailureReason | FinalClientFailureReason;
+
+export enum CancellationReason {
+  ROLE_CLOSED = 'Role Closed',
+  RESCHEDULED = 'Rescheduled'
 }
 
 export enum ResumeCheckerType {
@@ -16,9 +69,23 @@ export enum ResumeCheckerType {
   RECRUITER = 'RECRUITER'
 }
 
+export enum BidOrigin {
+  LINKEDIN = 'LINKEDIN',
+  BID = 'BID'
+}
+
 export enum InterviewBase {
   BID = 'BID',
   LINKEDIN_CHAT = 'LINKEDIN_CHAT'
+}
+
+export enum InterviewType {
+  HR = 'HR',
+  TECH_INTERVIEW_1 = 'TECH_INTERVIEW_1',
+  TECH_INTERVIEW_2 = 'TECH_INTERVIEW_2',
+  TECH_INTERVIEW_3 = 'TECH_INTERVIEW_3',
+  FINAL_INTERVIEW = 'FINAL_INTERVIEW',
+  CLIENT_INTERVIEW = 'CLIENT_INTERVIEW'
 }
 
 export enum InterviewStatus {
@@ -42,12 +109,16 @@ export interface Bid {
   mainStacks: string[];
   jobDescriptionPath: string;
   resumePath: string;
+  origin: BidOrigin;
+  recruiter?: string;
   date: string;
   status: BidStatus;
   interviewWinning: boolean;
   resumeChecker?: ResumeCheckerType;
   bidDetail?: string;
   originalBidId?: string;
+  rejectionReason?: RejectionReason;
+  hasBeenRebid?: boolean;
 }
 
 export interface CreateBidRequest {
@@ -58,6 +129,9 @@ export interface CreateBidRequest {
   mainStacks: string[];
   jobDescription: string;
   resumeFile: File;
+  origin: BidOrigin;
+  recruiter?: string;
+  resumeChecker?: ResumeCheckerType;
 }
 
 export interface CreateBidResponse {
@@ -90,10 +164,13 @@ export interface Interview {
   role: string;
   recruiter: string;
   attendees: string[];
-  interviewType: string;
+  interviewType: InterviewType;
   date: string;
   status: InterviewStatus;
   detail?: string;
+  failureReason?: InterviewFailureReason;
+  hasScheduledNext?: boolean;
+  cancellationReason?: CancellationReason;
 }
 
 export interface ScheduleInterviewRequest {
@@ -104,9 +181,10 @@ export interface ScheduleInterviewRequest {
   role?: string;
   recruiter: string;
   attendees: string[];
-  interviewType: string;
+  interviewType: InterviewType;
   date: string;
-  detail?: string;
+  detail?: string; // Optional - can be added later when completing the interview
+  baseInterviewId?: string; // Optional - ID of the interview this is scheduled from (for "Schedule Next" feature)
 }
 
 export interface ScheduleInterviewResponse {
@@ -122,6 +200,7 @@ export interface EligibilityResult {
 export interface CompleteInterviewRequest {
   success: boolean;
   detail?: string;
+  failureReason?: InterviewFailureReason;
 }
 
 export interface CompleteInterviewResponse {
@@ -150,12 +229,16 @@ export interface BidFilters {
   status?: BidStatus;
   dateFrom?: string;
   dateTo?: string;
+  mainStacks?: string[];
 }
 
 export interface InterviewFilters {
   company?: string;
   role?: string;
   status?: InterviewStatus;
+  recruiter?: string;
+  interviewType?: InterviewType;
+  attendees?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -163,4 +246,18 @@ export interface InterviewFilters {
 export interface SortOptions {
   field: string;
   order: 'asc' | 'desc';
+}
+
+// Pagination Types
+export interface PaginationOptions {
+  page: number;
+  pageSize: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }

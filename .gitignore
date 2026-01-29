@@ -7,6 +7,15 @@ dist/
 build/
 *.tsbuildinfo
 
+# Electron
+packages/frontend/release/
+packages/frontend/out/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+
 # Environment variables
 .env
 .env.local
