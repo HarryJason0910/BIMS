@@ -2,53 +2,74 @@ import request from 'supertest';
 import express, { Express } from 'express';
 import { BidController } from './BidController';
 import { InMemoryBidRepository } from './InMemoryBidRepository';
+import { InMemoryInterviewRepository } from './InMemoryInterviewRepository';
 import { CreateBidUseCase } from '../application/CreateBidUseCase';
 import { RebidWithNewResumeUseCase } from '../application/RebidWithNewResumeUseCase';
 import { DuplicationDetectionPolicy } from '../domain/DuplicationDetectionPolicy';
 import { CompanyHistory } from '../domain/CompanyHistory';
-import { Bid, BidStatus } from '../domain/Bid';
+import { FileStorageService } from './FileStorageService';
+import { Bid, BidStatus, BidOrigin, RejectionReason } from '../domain/Bid';
 
 describe('BidController Integration Tests', () => {
   let app: Express;
   let bidRepository: InMemoryBidRepository;
+  let interviewRepository: InMemoryInterviewRepository;
   let createBidUseCase: CreateBidUseCase;
   let rebidUseCase: RebidWithNewResumeUseCase;
+  let fileStorageService: FileStorageService;
   let bidController: BidController;
 
   beforeEach(() => {
     // Initialize dependencies
     bidRepository = new InMemoryBidRepository();
+    interviewRepository = new InMemoryInterviewRepository();
     const duplicationPolicy = new DuplicationDetectionPolicy();
     const companyHistory = new CompanyHistory();
+    fileStorageService = new FileStorageService('./test-uploads');
 
     createBidUseCase = new CreateBidUseCase(bidRepository, duplicationPolicy, companyHistory);
     rebidUseCase = new RebidWithNewResumeUseCase(
       bidRepository,
+      interviewRepository,
       duplicationPolicy,
       companyHistory
     );
 
-    bidController = new BidController(createBidUseCase, rebidUseCase, bidRepository);
+    bidController = new BidController(createBidUseCase, rebidUseCase, bidRepository, fileStorageService);
 
     // Setup Express app
     app = express();
     app.use(express.json());
     app.use('/api/bids', bidController.getRouter());
+    
+    // Add error handling middleware for tests
+    app.use((err: any, _req: any, res: any, _next: any) => {
+      res.status(500).json({ error: err.message });
+    });
+  });
+
+  afterEach(() => {
+    // Clean up test uploads directory
+    const fs = require('fs');
+    const testUploadsDir = './test-uploads';
+    if (fs.existsSync(testUploadsDir)) {
+      fs.rmSync(testUploadsDir, { recursive: true, force: true });
+    }
   });
 
   describe('POST /api/bids', () => {
     it('should create a new bid with valid data', async () => {
-      const bidData = {
-        link: 'https://example.com/job/123',
-        company: 'TechCorp',
-        client: 'TechCorp',
-        role: 'Software Engineer',
-        mainStacks: ['TypeScript', 'Node.js'],
-        jobDescription: 'Build amazing software',
-        resume: 'resume_v1.pdf',
-      };
-
-      const response = await request(app).post('/api/bids').send(bidData).expect(201);
+      const response = await request(app)
+        .post('/api/bids')
+        .field('link', 'https://example.com/job/123')
+        .field('company', 'TechCorp')
+        .field('client', 'TechCorp')
+        .field('role', 'Software Engineer')
+        .field('mainStacks', JSON.stringify(['TypeScript', 'Node.js']))
+        .field('jobDescription', 'Build amazing software')
+        .field('origin', BidOrigin.BID)
+        .attach('resume', Buffer.from('fake pdf content'), 'resume.pdf')
+        .expect(201);
 
       expect(response.body).toHaveProperty('bidId');
       expect(response.body.warnings).toEqual([]);
@@ -69,41 +90,51 @@ describe('BidController Integration Tests', () => {
     });
 
     it('should return 400 if mainStacks is not an array', async () => {
-      const invalidData = {
-        link: 'https://example.com/job/123',
-        company: 'TechCorp',
-        client: 'TechCorp',
-        role: 'Software Engineer',
-        mainStacks: 'TypeScript',
-        jobDescription: 'Build amazing software',
-        resume: 'resume_v1.pdf',
-      };
-
-      const response = await request(app).post('/api/bids').send(invalidData).expect(400);
+      const response = await request(app)
+        .post('/api/bids')
+        .field('link', 'https://example.com/job/123')
+        .field('company', 'TechCorp')
+        .field('client', 'TechCorp')
+        .field('role', 'Software Engineer')
+        .field('mainStacks', 'TypeScript') // Invalid: string instead of array
+        .field('jobDescription', 'Build amazing software')
+        .field('origin', BidOrigin.BID)
+        .attach('resume', Buffer.from('fake pdf content'), 'resume.pdf')
+        .expect(400);
 
       expect(response.body).toHaveProperty('error', 'Validation Error');
-      expect(response.body.message).toContain('mainStacks must be an array');
+      expect(response.body.message).toContain('mainStacks must be a valid JSON array');
     });
 
-    it('should return duplication warnings for duplicate bids', async () => {
-      const bidData = {
-        link: 'https://example.com/job/123',
-        company: 'TechCorp',
-        client: 'TechCorp',
-        role: 'Software Engineer',
-        mainStacks: ['TypeScript', 'Node.js'],
-        jobDescription: 'Build amazing software',
-        resume: 'resume_v1.pdf',
-      };
-
+    it('should reject duplicate bids with error', async () => {
       // Create first bid
-      await request(app).post('/api/bids').send(bidData).expect(201);
+      await request(app)
+        .post('/api/bids')
+        .field('link', 'https://example.com/job/123')
+        .field('company', 'TechCorp')
+        .field('client', 'TechCorp')
+        .field('role', 'Software Engineer')
+        .field('mainStacks', JSON.stringify(['TypeScript', 'Node.js']))
+        .field('jobDescription', 'Build amazing software')
+        .field('origin', BidOrigin.BID)
+        .attach('resume', Buffer.from('fake pdf content'), 'resume.pdf')
+        .expect(201);
 
-      // Create duplicate bid
-      const response = await request(app).post('/api/bids').send(bidData).expect(201);
+      // Attempt to create duplicate bid - should fail
+      const response = await request(app)
+        .post('/api/bids')
+        .field('link', 'https://example.com/job/123')
+        .field('company', 'TechCorp')
+        .field('client', 'TechCorp')
+        .field('role', 'Software Engineer')
+        .field('mainStacks', JSON.stringify(['TypeScript', 'Node.js']))
+        .field('jobDescription', 'Build amazing software')
+        .field('origin', BidOrigin.BID)
+        .attach('resume', Buffer.from('fake pdf content'), 'resume.pdf')
+        .expect(500);
 
-      expect(response.body.warnings.length).toBeGreaterThan(0);
-      expect(response.body.warnings[0].type).toBe('LINK_MATCH');
+      expect(response.body.error).toContain('Duplicate bid detected');
+      expect(response.body.error).toContain('Duplicate link detected');
     });
   });
 
@@ -116,8 +147,9 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       const bid2 = Bid.create({
@@ -126,8 +158,9 @@ describe('BidController Integration Tests', () => {
         client: 'DataCorp',
         role: 'Data Engineer',
         mainStacks: ['Python'],
-        jobDescription: 'Job 2',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 2',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       await bidRepository.save(bid1);
@@ -145,8 +178,9 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       const bid2 = Bid.create({
@@ -155,8 +189,9 @@ describe('BidController Integration Tests', () => {
         client: 'DataCorp',
         role: 'Data Engineer',
         mainStacks: ['Python'],
-        jobDescription: 'Job 2',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 2',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       await bidRepository.save(bid1);
@@ -175,11 +210,12 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
-      bid1.markAsRejected();
+      bid1.markAsRejected(RejectionReason.ROLE_CLOSED);
 
       const bid2 = Bid.create({
         link: 'https://example.com/job/2',
@@ -187,8 +223,9 @@ describe('BidController Integration Tests', () => {
         client: 'DataCorp',
         role: 'Data Engineer',
         mainStacks: ['Python'],
-        jobDescription: 'Job 2',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 2',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       await bidRepository.save(bid1);
@@ -199,7 +236,7 @@ describe('BidController Integration Tests', () => {
         .expect(200);
 
       expect(response.body).toHaveLength(1);
-      expect(response.body[0].bidStatus).toBe(BidStatus.REJECTED);
+      expect(response.body[0].status).toBe(BidStatus.REJECTED);
     });
   });
 
@@ -211,8 +248,9 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       await bidRepository.save(bid);
@@ -238,23 +276,25 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
-      bid.markAsRejected();
+      bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       await bidRepository.save(bid);
-
-      const rebidData = {
-        newResume: 'resume_v2.pdf',
-        newJobDescription: 'Updated job description',
-      };
 
       const response = await request(app)
         .post(`/api/bids/${bid.id}/rebid`)
-        .send(rebidData)
-        .expect(201);
+        .field('newJobDescription', 'Updated job description')
+        .attach('resume', Buffer.from('fake pdf content v2'), 'resume_v2.pdf');
 
+      // Log error if not 201
+      if (response.status !== 201) {
+        console.log('Rebid error response:', response.body);
+      }
+
+      expect(response.status).toBe(201);
       expect(response.body.allowed).toBe(true);
       expect(response.body).toHaveProperty('newBidId');
     });
@@ -266,21 +306,18 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       // Mark interview started (sets interviewWinning to true)
       bid.markInterviewStarted();
       await bidRepository.save(bid);
 
-      const rebidData = {
-        newResume: 'resume_v2.pdf',
-      };
-
       const response = await request(app)
         .post(`/api/bids/${bid.id}/rebid`)
-        .send(rebidData)
+        .attach('resume', Buffer.from('fake pdf content v2'), 'resume_v2.pdf')
         .expect(400);
 
       expect(response.body).toHaveProperty('error', 'Rebid Not Allowed');
@@ -293,8 +330,9 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       await bidRepository.save(bid);
@@ -313,8 +351,9 @@ describe('BidController Integration Tests', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume_v1.pdf',
+        jobDescriptionPath: 'Job 1',
+        resumePath: 'resume_v1.pdf',
+        origin: BidOrigin.BID,
       });
 
       await bidRepository.save(bid);

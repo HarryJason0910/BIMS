@@ -4,7 +4,7 @@ import { CreateBidUseCase } from '../application/CreateBidUseCase';
 import { RebidWithNewResumeUseCase } from '../application/RebidWithNewResumeUseCase';
 import { IBidRepository } from '../application/IBidRepository';
 import { FileStorageService } from './FileStorageService';
-import { BidOrigin } from '../domain/Bid';
+import { BidOrigin, RejectionReason } from '../domain/Bid';
 
 export class BidController {
   private router: Router;
@@ -30,6 +30,8 @@ export class BidController {
     this.router.get('/:id/candidate-resumes', this.getCandidateResumes.bind(this));
     this.router.post('/:id/rebid', this.upload.single('resume'), this.rebid.bind(this));
     this.router.post('/:id/reject', this.markRejected.bind(this));
+    this.router.post('/:id/restore', this.restoreBid.bind(this));
+    this.router.post('/auto-reject', this.autoRejectOldBids.bind(this));
     this.router.put('/:id', this.updateBid.bind(this));
     this.router.delete('/:id', this.deleteBid.bind(this));
   }
@@ -37,13 +39,14 @@ export class BidController {
   private async createBid(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // Validate required fields
-      const { link, company, client, role, mainStacks, jobDescription, origin, recruiter, resumeChecker } = req.body;
+      const { link, company, client, role, mainStacks, jobDescription, origin, recruiter, resumeChecker, resumeId } = req.body;
       const resumeFile = req.file;
 
-      if (!link || !company || !client || !role || !mainStacks || !jobDescription || !resumeFile || !origin) {
+      // Either resumeFile or resumeId must be provided
+      if (!link || !company || !client || !role || !mainStacks || !jobDescription || (!resumeFile && !resumeId) || !origin) {
         res.status(400).json({
           error: 'Validation Error',
-          message: 'Missing required fields: link, company, client, role, mainStacks, jobDescription, resume file, origin',
+          message: 'Missing required fields: link, company, client, role, mainStacks, jobDescription, resume (file or ID), origin',
         });
         return;
       }
@@ -79,8 +82,35 @@ export class BidController {
         return;
       }
 
-      // Save files to storage
-      const resumePath = await this.fileStorageService.saveResume(company, role, resumeFile.buffer, parsedMainStacks);
+      // Handle resume: either save uploaded file or use existing resume
+      let resumePath: string;
+      if (resumeFile) {
+        // Save uploaded resume
+        resumePath = await this.fileStorageService.saveResume(company, role, resumeFile.buffer, parsedMainStacks);
+      } else if (resumeId) {
+        // Use existing resume - decode the base64 ID to get the file path
+        try {
+          resumePath = Buffer.from(resumeId, 'base64').toString('utf-8');
+          
+          // Verify the resume file exists
+          const fs = require('fs').promises;
+          await fs.access(resumePath);
+        } catch (error) {
+          res.status(404).json({
+            error: 'Not Found',
+            message: 'Selected resume file not found',
+          });
+          return;
+        }
+      } else {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'Either resume file or resume ID must be provided',
+        });
+        return;
+      }
+
+      // Save job description
       const jdPath = await this.fileStorageService.saveJobDescription(company, role, jobDescription, parsedMainStacks);
 
       const result = await this.createBidUseCase.execute({
@@ -413,6 +443,51 @@ export class BidController {
       await this.bidRepository.update(bid);
       
       res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async restoreBid(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const bid = await this.bidRepository.findById(id);
+
+      if (!bid) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: `Bid with id ${id} not found`,
+        });
+        return;
+      }
+
+      bid.restoreFromRejection();
+      await this.bidRepository.update(bid);
+      
+      res.json({ success: true, message: 'Bid restored successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async autoRejectOldBids(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const bids = await this.bidRepository.findAll();
+      const rejectedBids: string[] = [];
+
+      for (const bid of bids) {
+        if (bid.shouldAutoReject()) {
+          bid.markAsRejected(RejectionReason.AUTO_REJECTED);
+          await this.bidRepository.update(bid);
+          rejectedBids.push(bid.id);
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        rejectedCount: rejectedBids.length,
+        rejectedBids 
+      });
     } catch (error) {
       next(error);
     }

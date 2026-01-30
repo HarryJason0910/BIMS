@@ -3,8 +3,8 @@ import { IInterviewRepository } from './IInterviewRepository';
 import { IBidRepository } from './IBidRepository';
 import { ICompanyHistoryRepository } from './ICompanyHistoryRepository';
 import { CompanyHistory } from '../domain/CompanyHistory';
-import { Interview, InterviewBase, InterviewStatus } from '../domain/Interview';
-import { Bid, BidStatus } from '../domain/Bid';
+import { Interview, InterviewBase, InterviewStatus, InterviewType } from '../domain/Interview';
+import { Bid, BidStatus, BidOrigin } from '../domain/Bid';
 
 describe('CompleteInterviewUseCase', () => {
   let useCase: CompleteInterviewUseCase;
@@ -19,6 +19,7 @@ describe('CompleteInterviewUseCase', () => {
       save: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findAllPaginated: jest.fn(),
       findByCompanyAndRole: jest.fn(),
       findByBidId: jest.fn(),
       update: jest.fn(),
@@ -29,6 +30,7 @@ describe('CompleteInterviewUseCase', () => {
       save: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findAllPaginated: jest.fn(),
       findByCompanyAndRole: jest.fn(),
       findByLink: jest.fn(),
       update: jest.fn(),
@@ -57,9 +59,9 @@ describe('CompleteInterviewUseCase', () => {
       company: 'TechCorp',
       client: 'ClientCo',
       role: 'Software Engineer',
-      jobDescription: 'Build amazing software',
-      resume: 'resume_v1.pdf',
-      interviewType: 'Technical',
+      jobDescriptionPath: 'Build amazing software',
+      resumePath: 'resume_v1.pdf',
+      interviewType: InterviewType.TECH_INTERVIEW_1,
       recruiter: 'John Recruiter',
       attendees: ['Jane Interviewer', 'Bob Manager'],
       detail: 'Technical interview',
@@ -74,8 +76,9 @@ describe('CompleteInterviewUseCase', () => {
       client: 'ClientCo',
       role: 'Software Engineer',
       mainStacks: ['TypeScript', 'React'],
-      jobDescription: 'Build amazing software',
-      resume: 'resume_v1.pdf',
+      jobDescriptionPath: 'Build amazing software',
+      resumePath: 'resume_v1.pdf',
+      origin: BidOrigin.BID,
     });
   };
 

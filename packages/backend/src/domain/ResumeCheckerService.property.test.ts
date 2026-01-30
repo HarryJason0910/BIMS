@@ -7,7 +7,7 @@
 
 import * as fc from 'fast-check';
 import { ResumeCheckerService } from './ResumeCheckerService';
-import { Bid, ResumeCheckerType } from './Bid';
+import { Bid, ResumeCheckerType, BidOrigin } from './Bid';
 
 function createBidWithDate(bidData: any, submissionDate: Date): Bid {
   const bid = Bid.create(bidData);
@@ -39,8 +39,9 @@ describe('ResumeCheckerService Property-Based Tests', () => {
     client: nonEmptyStringArb,
     role: nonEmptyStringArb,
     mainStacks: nonEmptyArrayArb,
-    jobDescription: nonEmptyStringArb,
-    resume: nonEmptyStringArb
+    jobDescriptionPath: nonEmptyStringArb,
+    resumePath: nonEmptyStringArb,
+    origin: fc.constantFrom(BidOrigin.BID, BidOrigin.REBID)
   });
 
   describe('Property 12: Resume Checker Timing-Based Inference', () => {

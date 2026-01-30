@@ -44,6 +44,9 @@ export class ApiClient {
     // Use relative URL for production (served from same server) or env variable for development
     const baseURL = config.baseURL || (import.meta as any).env.VITE_API_BASE_URL || '';
     
+    console.log('[ApiClient] Initializing with baseURL:', baseURL);
+    console.log('[ApiClient] import.meta.env:', (import.meta as any).env);
+    
     this.client = axios.create({
       baseURL,
       timeout: config.timeout || 30000,
@@ -121,7 +124,14 @@ export class ApiClient {
     formData.append('role', request.role);
     formData.append('mainStacks', JSON.stringify(request.mainStacks));
     formData.append('jobDescription', request.jobDescription);
-    formData.append('resume', request.resumeFile);
+    
+    // Handle either uploaded file or selected resume ID
+    if (request.resumeFile) {
+      formData.append('resume', request.resumeFile);
+    } else if (request.resumeId) {
+      formData.append('resumeId', request.resumeId);
+    }
+    
     formData.append('origin', request.origin);
     if (request.recruiter) {
       formData.append('recruiter', request.recruiter);
@@ -183,6 +193,24 @@ export class ApiClient {
    */
   async markBidRejected(id: string, reason: string): Promise<{ success: boolean }> {
     const response = await this.client.post<{ success: boolean }>(`/api/bids/${id}/reject`, { reason });
+    return response.data;
+  }
+
+  /**
+   * Restore a rejected bid back to submitted status
+   * Note: Does not use retry logic as this is a state-changing operation
+   */
+  async restoreBid(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post<{ success: boolean; message: string }>(`/api/bids/${id}/restore`);
+    return response.data;
+  }
+
+  /**
+   * Auto-reject bids older than 2 weeks
+   * Note: Does not use retry logic as this is a state-changing operation
+   */
+  async autoRejectOldBids(): Promise<{ success: boolean; rejectedCount: number; rejectedBids: string[] }> {
+    const response = await this.client.post<{ success: boolean; rejectedCount: number; rejectedBids: string[] }>('/api/bids/auto-reject');
     return response.data;
   }
 
@@ -511,6 +539,16 @@ export class ApiClient {
   }): Promise<any> {
     return this.withRetry(async () => {
       const response = await this.client.get('/api/analytics/advanced-trends', { params });
+      return response.data;
+    });
+  }
+
+  /**
+   * Generic GET method for custom endpoints
+   */
+  async get<T>(url: string, config?: { params?: any }): Promise<T> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<T>(url, config);
       return response.data;
     });
   }

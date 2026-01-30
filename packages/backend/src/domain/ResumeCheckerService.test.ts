@@ -5,7 +5,7 @@
  */
 
 import { ResumeCheckerService } from './ResumeCheckerService';
-import { Bid, ResumeCheckerType, CreateBidData } from './Bid';
+import { Bid, ResumeCheckerType, CreateBidData, BidOrigin } from './Bid';
 
 describe('ResumeCheckerService Unit Tests', () => {
   const service = new ResumeCheckerService();
@@ -18,8 +18,9 @@ describe('ResumeCheckerService Unit Tests', () => {
       client: 'Test Client',
       role: 'Software Engineer',
       mainStacks: ['TypeScript', 'Node.js'],
-      jobDescription: 'Test job description',
-      resume: 'Test resume'
+      jobDescriptionPath: 'Test job description',
+      resumePath: 'Test resume',
+      origin: BidOrigin.BID
     };
     
     const bid = Bid.create(bidData);

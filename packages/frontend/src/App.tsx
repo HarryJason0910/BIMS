@@ -1,9 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { BidDashboard } from './pages/BidDashboard';
 import { InterviewDashboard } from './pages/InterviewDashboard';
 import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
+import { apiClient } from './api';
 
 const theme = createTheme({
   palette: {
@@ -18,6 +20,22 @@ const theme = createTheme({
 });
 
 function App() {
+  // Auto-reject old bids on app startup
+  useEffect(() => {
+    const autoRejectOldBids = async () => {
+      try {
+        const result = await apiClient.autoRejectOldBids();
+        if (result.rejectedCount > 0) {
+          console.log(`Auto-rejected ${result.rejectedCount} old bids`);
+        }
+      } catch (error) {
+        console.error('Failed to auto-reject old bids:', error);
+      }
+    };
+
+    autoRejectOldBids();
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />

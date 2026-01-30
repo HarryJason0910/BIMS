@@ -9,6 +9,7 @@ import { MongoDBConnection } from './MongoDBConnection';
  */
 interface InterviewDocument {
   _id: ObjectId;
+  domainId: string; // Store the original domain ID
   date: Date;
   base: string;
   company: string;
@@ -44,6 +45,7 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
 
   private async ensureIndexes(): Promise<void> {
     try {
+      await this.collection.createIndex({ domainId: 1 }, { unique: true });
       await this.collection.createIndex({ company: 1, role: 1 });
       await this.collection.createIndex({ bidId: 1 });
       await this.collection.createIndex({ status: 1 });
@@ -59,6 +61,7 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
   private toDocument(interview: Interview): Omit<InterviewDocument, '_id'> {
     const json = interview.toJSON();
     return {
+      domainId: json.id,
       date: json.date,
       base: json.base,
       company: json.company,
@@ -102,7 +105,7 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
     });
 
     // Use Object.defineProperty to set private fields and readonly fields
-    Object.defineProperty(interview, 'id', { value: doc._id.toString(), writable: false });
+    Object.defineProperty(interview, 'id', { value: doc.domainId, writable: false });
     // Note: date is already set correctly in Interview.create() above
     Object.defineProperty(interview, '_status', { value: doc.status as InterviewStatus, writable: true });
     Object.defineProperty(interview, '_detail', { value: doc.detail, writable: true });
@@ -114,25 +117,18 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
   }
 
   async save(interview: Interview): Promise<void> {
-    const json = interview.toJSON();
     const doc = this.toDocument(interview);
     
+    // Generate a new ObjectId for MongoDB
     await this.collection.insertOne({
-      _id: new ObjectId(json.id.replace('interview-', '')),
+      _id: new ObjectId(),
       ...doc,
     } as InterviewDocument);
   }
 
   async findById(id: string): Promise<Interview | null> {
-    try {
-      const doc = await this.collection.findOne({ 
-        _id: new ObjectId(id.replace('interview-', '')) 
-      });
-      return doc ? this.toDomain(doc) : null;
-    } catch (error) {
-      // Invalid ObjectId format
-      return null;
-    }
+    const doc = await this.collection.findOne({ domainId: id });
+    return doc ? this.toDomain(doc) : null;
   }
 
   async findAll(filters?: InterviewFilterOptions, sort?: InterviewSortOptions): Promise<Interview[]> {
@@ -199,7 +195,7 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
     const doc = this.toDocument(interview);
     
     await this.collection.updateOne(
-      { _id: new ObjectId(json.id.replace('interview-', '')) },
+      { domainId: json.id },
       { 
         $set: {
           ...doc,
@@ -210,9 +206,7 @@ export class MongoDBInterviewRepository implements IInterviewRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.collection.deleteOne({ 
-      _id: new ObjectId(id.replace('interview-', '')) 
-    });
+    await this.collection.deleteOne({ domainId: id });
   }
 
   async findAllPaginated(filters?: InterviewFilterOptions, sort?: InterviewSortOptions, pagination?: InterviewPaginationOptions): Promise<PaginatedInterviews> {

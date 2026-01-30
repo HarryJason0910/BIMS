@@ -4,7 +4,7 @@
  */
 
 import { InMemoryBidRepository } from './InMemoryBidRepository';
-import { Bid, BidStatus } from '../domain/Bid';
+import { Bid, BidStatus, BidOrigin, RejectionReason } from '../domain/Bid';
 
 describe('BidRepository - Filtering and Sorting', () => {
   let repository: InMemoryBidRepository;
@@ -25,8 +25,9 @@ describe('BidRepository - Filtering and Sorting', () => {
       client: overrides.client || 'ClientCorp',
       role: overrides.role || 'Software Engineer',
       mainStacks: overrides.mainStacks || ['TypeScript', 'React'],
-      jobDescription: overrides.jobDescription || 'Job description',
-      resume: overrides.resume || 'Resume v1',
+      jobDescriptionPath: overrides.jobDescriptionPath || 'TechCorp_Software_Engineer/JD.txt',
+      resumePath: overrides.resumePath || 'TechCorp_Software_Engineer/resume.pdf',
+      origin: overrides.origin || BidOrigin.BID
     });
   };
 
@@ -87,7 +88,7 @@ describe('BidRepository - Filtering and Sorting', () => {
 
       // Mark one as rejected
       bid2.markAsSubmitted();
-      bid2.markAsRejected();
+      bid2.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       await repository.update(bid2);
 
       const results = await repository.findAll({ status: BidStatus.REJECTED });
@@ -238,7 +239,7 @@ describe('BidRepository - Filtering and Sorting', () => {
 
       bid1.markAsSubmitted();
       bid2.markAsSubmitted();
-      bid2.markAsRejected();
+      bid2.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
 
       await repository.save(bid1);
       await repository.save(bid2);
