@@ -46,7 +46,7 @@ export class FileStorageService {
 
   /**
    * Save resume PDF file
-   * Returns the relative file path
+   * Returns the absolute file path
    */
   async saveResume(company: string, role: string, fileBuffer: Buffer, mainStacks?: string[]): Promise<string> {
     const folderPath = this.getFolderPath(company, role, mainStacks);
@@ -59,13 +59,13 @@ export class FileStorageService {
     const filePath = path.join(folderPath, 'resume.pdf');
     fs.writeFileSync(filePath, fileBuffer);
 
-    // Return relative path
-    return path.relative(this.baseDir, filePath);
+    // Return absolute path
+    return path.resolve(filePath);
   }
 
   /**
    * Save job description as text file
-   * Returns the relative file path
+   * Returns the absolute file path
    */
   async saveJobDescription(company: string, role: string, content: string, mainStacks?: string[]): Promise<string> {
     const folderPath = this.getFolderPath(company, role, mainStacks);
@@ -78,28 +78,34 @@ export class FileStorageService {
     const filePath = path.join(folderPath, 'JD.txt');
     fs.writeFileSync(filePath, content, 'utf-8');
 
-    // Return relative path
-    return path.relative(this.baseDir, filePath);
+    // Return absolute path
+    return path.resolve(filePath);
   }
 
   /**
    * Read resume file
+   * Handles both relative paths (from uploaded resumes) and absolute paths (from selected resumes)
    */
-  async readResume(relativePath: string): Promise<Buffer> {
-    const fullPath = path.join(this.baseDir, relativePath);
+  async readResume(filePath: string): Promise<Buffer> {
+    // Check if path is absolute (selected from history) or relative (uploaded with bid)
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.baseDir, filePath);
+    
     if (!fs.existsSync(fullPath)) {
-      throw new Error(`Resume file not found: ${relativePath}`);
+      throw new Error(`Resume file not found: ${filePath}`);
     }
     return fs.readFileSync(fullPath);
   }
 
   /**
    * Read job description file
+   * Handles both relative paths (from uploaded JDs) and absolute paths (from selected resumes)
    */
-  async readJobDescription(relativePath: string): Promise<string> {
-    const fullPath = path.join(this.baseDir, relativePath);
+  async readJobDescription(filePath: string): Promise<string> {
+    // Check if path is absolute or relative
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.baseDir, filePath);
+    
     if (!fs.existsSync(fullPath)) {
-      throw new Error(`Job description file not found: ${relativePath}`);
+      throw new Error(`Job description file not found: ${filePath}`);
     }
     return fs.readFileSync(fullPath, 'utf-8');
   }

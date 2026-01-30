@@ -5,7 +5,7 @@
  * and business logic.
  */
 
-import { Bid, BidStatus, ResumeCheckerType, CreateBidData, BidOrigin } from './Bid';
+import { Bid, BidStatus, ResumeCheckerType, CreateBidData, BidOrigin, RejectionReason } from './Bid';
 
 describe('Bid Unit Tests', () => {
   // Helper function to create valid bid data
@@ -105,7 +105,7 @@ describe('Bid Unit Tests', () => {
         const bid = Bid.create(createValidBidData());
         bid.markAsSubmitted();
         
-        bid.markAsRejected();
+        bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
         
         expect(bid.bidStatus).toBe(BidStatus.REJECTED);
         expect(bid.interviewWinning).toBe(false);
@@ -114,7 +114,7 @@ describe('Bid Unit Tests', () => {
       it('should allow rebidding after rejection without interview', () => {
         const bid = Bid.create(createValidBidData());
         bid.markAsSubmitted();
-        bid.markAsRejected();
+        bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
         
         expect(bid.canRebid()).toBe(true);
       });
@@ -154,7 +154,7 @@ describe('Bid Unit Tests', () => {
     it('should allow transition from REJECTED to CLOSED', () => {
       const bid = Bid.create(createValidBidData());
       bid.markAsSubmitted();
-      bid.markAsRejected();
+      bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       
       bid.markAsClosed();
       
@@ -168,7 +168,7 @@ describe('Bid Unit Tests', () => {
       bid.markAsSubmitted();
       bid.markInterviewStarted();
       
-      expect(() => bid.markAsRejected()).toThrow(
+      expect(() => bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME)).toThrow(
         'Cannot reject bid after interview stage has started'
       );
     });
@@ -185,7 +185,7 @@ describe('Bid Unit Tests', () => {
     it('should prevent starting interview on rejected bid', () => {
       const bid = Bid.create(createValidBidData());
       bid.markAsSubmitted();
-      bid.markAsRejected();
+      bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       
       expect(() => bid.markInterviewStarted()).toThrow(
         'Cannot start interview for rejected bid'
@@ -215,7 +215,7 @@ describe('Bid Unit Tests', () => {
       bid.markAsSubmitted();
       bid.markAsClosed();
       
-      expect(() => bid.markAsRejected()).toThrow(
+      expect(() => bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME)).toThrow(
         'Cannot reject bid that is already closed'
       );
     });
@@ -325,7 +325,7 @@ describe('Bid Unit Tests', () => {
       it('should return true for REJECTED bid without interview', () => {
         const bid = Bid.create(createValidBidData());
         bid.markAsSubmitted();
-        bid.markAsRejected();
+        bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
         
         expect(bid.canRebid()).toBe(true);
       });
@@ -360,6 +360,114 @@ describe('Bid Unit Tests', () => {
       expect(json.company).toBe(bidData.company);
       expect(json.bidStatus).toBe(BidStatus.NEW);
       expect(json.interviewWinning).toBe(false);
+    });
+  });
+
+  describe('Auto-Rejection and Restore', () => {
+    describe('shouldAutoReject', () => {
+      it('should return true for NEW bid older than 2 weeks', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        
+        // Set date to 15 days ago
+        const fifteenDaysAgo = new Date();
+        fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+        fifteenDaysAgo.setHours(0, 0, 0, 0);
+        (bid as any).date = fifteenDaysAgo;
+        
+        expect(bid.shouldAutoReject()).toBe(true);
+      });
+
+      it('should return true for SUBMITTED bid older than 2 weeks', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        bid.markAsSubmitted();
+        
+        // Set date to 15 days ago
+        const fifteenDaysAgo = new Date();
+        fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+        fifteenDaysAgo.setHours(0, 0, 0, 0);
+        (bid as any).date = fifteenDaysAgo;
+        
+        expect(bid.shouldAutoReject()).toBe(true);
+      });
+
+      it('should return false for NEW bid less than 2 weeks old', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        
+        // Set date to 10 days ago
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+        tenDaysAgo.setHours(0, 0, 0, 0);
+        (bid as any).date = tenDaysAgo;
+        
+        expect(bid.shouldAutoReject()).toBe(false);
+      });
+
+      it('should return false for REJECTED bid', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        bid.markAsRejected(RejectionReason.ROLE_CLOSED);
+        
+        // Set date to 15 days ago
+        const fifteenDaysAgo = new Date();
+        fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+        fifteenDaysAgo.setHours(0, 0, 0, 0);
+        (bid as any).date = fifteenDaysAgo;
+        
+        expect(bid.shouldAutoReject()).toBe(false);
+      });
+
+      it('should return false for INTERVIEW_STAGE bid', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        bid.markAsSubmitted();
+        bid.markInterviewStarted();
+        
+        // Set date to 15 days ago
+        const fifteenDaysAgo = new Date();
+        fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+        fifteenDaysAgo.setHours(0, 0, 0, 0);
+        (bid as any).date = fifteenDaysAgo;
+        
+        expect(bid.shouldAutoReject()).toBe(false);
+      });
+    });
+
+    describe('restoreFromRejection', () => {
+      it('should restore REJECTED bid to SUBMITTED status', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        bid.markAsSubmitted();
+        bid.markAsRejected(RejectionReason.AUTO_REJECTED);
+        
+        expect(bid.bidStatus).toBe(BidStatus.REJECTED);
+        expect(bid.rejectionReason).toBe(RejectionReason.AUTO_REJECTED);
+        
+        bid.restoreFromRejection();
+        
+        expect(bid.bidStatus).toBe(BidStatus.SUBMITTED);
+        expect(bid.rejectionReason).toBeNull();
+      });
+
+      it('should throw error when restoring non-REJECTED bid', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        bid.markAsSubmitted();
+        
+        expect(() => bid.restoreFromRejection()).toThrow('Can only restore bids that are in REJECTED status');
+      });
+
+      it('should throw error when restoring bid that reached interview stage', () => {
+        const bidData = createValidBidData();
+        const bid = Bid.create(bidData);
+        bid.markAsSubmitted();
+        bid.markInterviewStarted();
+        (bid as any)._bidStatus = BidStatus.REJECTED; // Force to rejected
+        
+        expect(() => bid.restoreFromRejection()).toThrow('Cannot restore bid that has reached interview stage');
+      });
     });
   });
 });

@@ -38,7 +38,8 @@ export enum Role {
 
 export enum RejectionReason {
   ROLE_CLOSED = 'Role Closed',
-  UNSATISFIED_RESUME = 'Unsatisfied Resume'
+  UNSATISFIED_RESUME = 'Unsatisfied Resume',
+  AUTO_REJECTED = 'Auto-Rejected (2 weeks)'
 }
 
 export enum HRFailureReason {
@@ -128,7 +129,8 @@ export interface CreateBidRequest {
   role: string;
   mainStacks: string[];
   jobDescription: string;
-  resumeFile: File;
+  resumeFile?: File;  // Optional - used when uploading new resume
+  resumeId?: string;  // Optional - used when selecting from history
   origin: BidOrigin;
   recruiter?: string;
   resumeChecker?: ResumeCheckerType;
@@ -246,6 +248,18 @@ export interface InterviewFilters {
 export interface SortOptions {
   field: string;
   order: 'asc' | 'desc';
+}
+
+// Resume Selection Types
+export interface ResumeMetadata {
+  id: string;
+  company: string;
+  role: string;
+  techStack: string[];
+  score: number;
+  createdAt: string;
+  matchedSkills: string[];
+  missingSkills: string[];
 }
 
 // Pagination Types

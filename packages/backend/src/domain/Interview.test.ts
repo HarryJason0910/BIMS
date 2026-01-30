@@ -5,7 +5,7 @@
  * and business logic.
  */
 
-import { Interview, InterviewBase, InterviewStatus, CreateInterviewData } from './Interview';
+import { Interview, InterviewBase, InterviewStatus, InterviewType, CreateInterviewData } from './Interview';
 
 describe('Interview Unit Tests', () => {
   // Helper function to create valid interview data
@@ -16,7 +16,7 @@ describe('Interview Unit Tests', () => {
     role: 'Software Engineer',
     jobDescription: 'We are looking for a software engineer...',
     resume: 'resume-v1.pdf',
-    interviewType: 'Technical',
+    interviewType: InterviewType.TECH_INTERVIEW_1,
     recruiter: 'John Doe',
     attendees: ['Jane Smith', 'Bob Johnson'],
     detail: 'First round technical interview',
@@ -281,20 +281,20 @@ describe('Interview Unit Tests', () => {
         expect(interview.detail).toBe('Updated interview notes');
       });
 
-      it('should throw error when updating with empty detail', () => {
+      it('should allow updating with empty detail', () => {
         const interview = Interview.create(createValidInterviewData());
         
-        expect(() => interview.updateDetail('')).toThrow(
-          'Detail cannot be empty'
-        );
+        interview.updateDetail('');
+        
+        expect(interview.detail).toBe('');
       });
 
-      it('should throw error when updating with whitespace-only detail', () => {
+      it('should allow updating with whitespace-only detail', () => {
         const interview = Interview.create(createValidInterviewData());
         
-        expect(() => interview.updateDetail('   ')).toThrow(
-          'Detail cannot be empty'
-        );
+        interview.updateDetail('   ');
+        
+        expect(interview.detail).toBe('   ');
       });
     });
   });

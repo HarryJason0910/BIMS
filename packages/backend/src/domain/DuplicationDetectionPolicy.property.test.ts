@@ -6,7 +6,7 @@
  */
 
 import * as fc from 'fast-check';
-import { Bid, CreateBidData } from './Bid';
+import { Bid, CreateBidData, BidOrigin } from './Bid';
 import { DuplicationDetectionPolicy } from './DuplicationDetectionPolicy';
 
 describe('DuplicationDetectionPolicy Property-Based Tests', () => {
@@ -28,8 +28,9 @@ describe('DuplicationDetectionPolicy Property-Based Tests', () => {
     client: nonEmptyStringArb,
     role: nonEmptyStringArb,
     mainStacks: nonEmptyArrayArb,
-    jobDescription: nonEmptyStringArb,
-    resume: nonEmptyStringArb
+    jobDescriptionPath: nonEmptyStringArb,
+    resumePath: nonEmptyStringArb,
+    origin: fc.constant(BidOrigin.BID)
   });
 
   describe('Property 4: Link-Based Duplication Detection', () => {

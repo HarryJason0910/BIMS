@@ -2,7 +2,7 @@
  * Unit tests for DuplicationDetectionPolicy
  */
 
-import { Bid, CreateBidData } from './Bid';
+import { Bid, CreateBidData, BidOrigin } from './Bid';
 import { DuplicationDetectionPolicy } from './DuplicationDetectionPolicy';
 
 describe('DuplicationDetectionPolicy', () => {
@@ -20,8 +20,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript', 'React'],
-        jobDescription: 'Great job',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, []);
@@ -36,8 +37,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript', 'React'],
-        jobDescription: 'Great job',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -46,8 +48,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'OtherCorp',
         role: 'Backend Developer',
         mainStacks: ['Node.js'],
-        jobDescription: 'Another job',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'OtherCorp_Backend_Developer/JD.txt',
+        resumePath: 'OtherCorp_Backend_Developer/resume.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid]);
@@ -62,8 +65,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript', 'React'],
-        jobDescription: 'Great job',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -72,8 +76,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'DifferentCorp',
         role: 'Different Role',
         mainStacks: ['Java'],
-        jobDescription: 'Different job',
-        resume: 'resume-v2.pdf'
+        jobDescriptionPath: 'DifferentCorp_Different_Role/JD.txt',
+        resumePath: 'DifferentCorp_Different_Role/resume.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid]);
@@ -92,8 +97,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript', 'React'],
-        jobDescription: 'Great job',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -102,8 +108,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'software engineer', // Same role, different case
         mainStacks: ['TypeScript', 'React'],
-        jobDescription: 'Great job',
-        resume: 'resume-v2.pdf'
+        jobDescriptionPath: 'techcorp_software_engineer/JD.txt',
+        resumePath: 'techcorp_software_engineer/resume.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid]);
@@ -123,8 +130,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript', 'React'],
-        jobDescription: 'Great job',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -133,8 +141,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer', // Same role
         mainStacks: ['TypeScript', 'React'],
-        jobDescription: 'Great job',
-        resume: 'resume-v2.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD_v2.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume_v2.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid]);
@@ -151,8 +160,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const existingBid2 = Bid.create({
@@ -161,8 +171,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'DataCorp',
         role: 'Data Engineer',
         mainStacks: ['Python'],
-        jobDescription: 'Job 2',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'DataCorp_Data_Engineer/JD.txt',
+        resumePath: 'DataCorp_Data_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -171,8 +182,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'DataCorp',
         role: 'Data Engineer', // Matches bid2 role
         mainStacks: ['Python'],
-        jobDescription: 'New job',
-        resume: 'resume-v2.pdf'
+        jobDescriptionPath: 'DataCorp_Data_Engineer/JD_new.txt',
+        resumePath: 'DataCorp_Data_Engineer/resume_new.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid1, existingBid2]);
@@ -195,8 +207,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -205,8 +218,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Data Engineer', // Different role
         mainStacks: ['Python'],
-        jobDescription: 'Job 2',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Data_Engineer/JD.txt',
+        resumePath: 'TechCorp_Data_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid]);
@@ -221,8 +235,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -231,8 +246,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'DataCorp',
         role: 'Software Engineer', // Same role
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 2',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'DataCorp_Software_Engineer/JD.txt',
+        resumePath: 'DataCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid]);
@@ -247,8 +263,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const testCases = [
@@ -264,8 +281,9 @@ describe('DuplicationDetectionPolicy', () => {
           client: testCase.company,
           role: testCase.role,
           mainStacks: ['TypeScript'],
-          jobDescription: 'Job 2',
-          resume: 'resume-v1.pdf'
+          jobDescriptionPath: `${testCase.company}_${testCase.role}/JD.txt`,
+          resumePath: `${testCase.company}_${testCase.role}/resume.pdf`,
+          origin: BidOrigin.BID
         };
 
         const warnings = policy.checkDuplication(newBid, [existingBid]);
@@ -282,8 +300,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+        origin: BidOrigin.BID
       });
 
       const newBid: CreateBidData = {
@@ -292,8 +311,9 @@ describe('DuplicationDetectionPolicy', () => {
         client: 'TechCorp',
         role: 'Software Engineer',
         mainStacks: ['TypeScript'],
-        jobDescription: 'Job 1',
-        resume: 'resume-v1.pdf'
+        jobDescriptionPath: 'TechCorp_Software_Engineer/JD_v2.txt',
+        resumePath: 'TechCorp_Software_Engineer/resume_v2.pdf',
+        origin: BidOrigin.BID
       };
 
       const warnings = policy.checkDuplication(newBid, [existingBid]);

@@ -6,7 +6,7 @@
  */
 
 import * as fc from 'fast-check';
-import { Bid, BidStatus } from './Bid';
+import { Bid, BidStatus, BidOrigin, RejectionReason } from './Bid';
 
 describe('Bid Property-Based Tests', () => {
   // Arbitraries (generators) for test data
@@ -22,8 +22,9 @@ describe('Bid Property-Based Tests', () => {
     client: nonEmptyStringArb,
     role: nonEmptyStringArb,
     mainStacks: nonEmptyArrayArb,
-    jobDescription: nonEmptyStringArb,
-    resume: nonEmptyStringArb
+    jobDescriptionPath: nonEmptyStringArb,
+    resumePath: nonEmptyStringArb,
+    origin: fc.constant(BidOrigin.BID)
   });
 
   describe('Property 1: Bid Creation Date Initialization', () => {
@@ -176,7 +177,7 @@ describe('Bid Property-Based Tests', () => {
       );
     });
 
-    it('should reject bid creation when jobDescription is missing or empty', () => {
+    it('should reject bid creation when jobDescriptionPath is missing or empty', () => {
       fc.assert(
         fc.property(
           fc.record({
@@ -185,15 +186,16 @@ describe('Bid Property-Based Tests', () => {
             client: nonEmptyStringArb,
             role: nonEmptyStringArb,
             mainStacks: nonEmptyArrayArb,
-            jobDescription: fc.constant(''),
-            resume: nonEmptyStringArb
+            jobDescriptionPath: fc.constant(''),
+            resumePath: nonEmptyStringArb,
+            origin: fc.constant(BidOrigin.BID)
           }),
           (bidData) => {
             try {
               Bid.create(bidData);
               return false; // Should have thrown
             } catch (error) {
-              return error instanceof Error && error.message.includes('jobDescription');
+              return error instanceof Error && error.message.includes('jobDescriptionPath');
             }
           }
         ),
@@ -201,7 +203,7 @@ describe('Bid Property-Based Tests', () => {
       );
     });
 
-    it('should reject bid creation when resume is missing or empty', () => {
+    it('should reject bid creation when resumePath is missing or empty', () => {
       fc.assert(
         fc.property(
           fc.record({
@@ -210,15 +212,16 @@ describe('Bid Property-Based Tests', () => {
             client: nonEmptyStringArb,
             role: nonEmptyStringArb,
             mainStacks: nonEmptyArrayArb,
-            jobDescription: nonEmptyStringArb,
-            resume: fc.constant('')
+            jobDescriptionPath: nonEmptyStringArb,
+            resumePath: fc.constant(''),
+            origin: fc.constant(BidOrigin.BID)
           }),
           (bidData) => {
             try {
               Bid.create(bidData);
               return false; // Should have thrown
             } catch (error) {
-              return error instanceof Error && error.message.includes('resume');
+              return error instanceof Error && error.message.includes('resumePath');
             }
           }
         ),
@@ -269,7 +272,7 @@ describe('Bid Property-Based Tests', () => {
                 if (bid.bidStatus === BidStatus.NEW) {
                   bid.markAsSubmitted();
                 }
-                bid.markAsRejected();
+                bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
               } else if (targetStatus === BidStatus.INTERVIEW_STAGE) {
                 if (bid.bidStatus === BidStatus.NEW) {
                   bid.markAsSubmitted();
@@ -324,7 +327,7 @@ describe('Bid Property-Based Tests', () => {
           
           // Reject without starting interview
           bid.markAsSubmitted();
-          bid.markAsRejected();
+          bid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
           
           return bid.canRebid() && 
                  bid.bidStatus === BidStatus.REJECTED && 

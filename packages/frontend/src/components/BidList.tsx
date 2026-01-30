@@ -9,6 +9,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import RestoreIcon from '@mui/icons-material/Restore';
 import { apiClient } from '../api';
 import { Bid, BidFilters, SortOptions, BidStatus, ResumeCheckerType, RejectionReason, PaginatedResponse } from '../api/types';
 import { RejectionReasonModal } from './RejectionReasonModal';
@@ -110,6 +111,23 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
     } catch (error) {
       console.error('Failed to update resume checker:', error);
       alert('Failed to update resume checker');
+    }
+  };
+
+  const handleRestoreBid = async (bidId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to restore this bid? It will be moved back to SUBMITTED status.')) {
+      return;
+    }
+
+    try {
+      await apiClient.restoreBid(bidId);
+      queryClient.invalidateQueries({ queryKey: ['bids'] });
+      alert('Bid restored successfully');
+    } catch (error) {
+      console.error('Failed to restore bid:', error);
+      alert('Failed to restore bid: ' + (error as Error).message);
     }
   };
 
@@ -371,20 +389,32 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
                       </Button>
                     )}
                     {bid.status === BidStatus.REJECTED && (
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (canRebid(bid)) {
-                            onRebid?.(bid);
-                          }
-                        }}
-                        variant="outlined"
-                        size="small"
-                        disabled={!canRebid(bid)}
-                        title={!canRebid(bid) ? 'Cannot rebid - this bid has already been rebid' : 'Rebid with new resume'}
-                      >
-                        Rebid
-                      </Button>
+                      <>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (canRebid(bid)) {
+                              onRebid?.(bid);
+                            }
+                          }}
+                          variant="outlined"
+                          size="small"
+                          disabled={!canRebid(bid)}
+                          title={!canRebid(bid) ? 'Cannot rebid - this bid has already been rebid' : 'Rebid with new resume'}
+                        >
+                          Rebid
+                        </Button>
+                        <Button
+                          onClick={(e) => handleRestoreBid(bid.id, e)}
+                          variant="outlined"
+                          size="small"
+                          color="success"
+                          startIcon={<RestoreIcon />}
+                          title="Restore bid to SUBMITTED status"
+                        >
+                          Restore
+                        </Button>
+                      </>
                     )}
                   </Box>
                 </TableCell>

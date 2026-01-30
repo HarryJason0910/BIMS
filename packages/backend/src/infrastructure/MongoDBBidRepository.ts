@@ -9,6 +9,7 @@ import { MongoDBConnection } from './MongoDBConnection';
  */
 interface BidDocument {
   _id: ObjectId;
+  domainId: string; // Store the original domain ID
   date: Date;
   link: string;
   company: string;
@@ -43,6 +44,7 @@ export class MongoDBBidRepository implements IBidRepository {
 
   private async ensureIndexes(): Promise<void> {
     try {
+      await this.collection.createIndex({ domainId: 1 }, { unique: true });
       await this.collection.createIndex({ link: 1 });
       await this.collection.createIndex({ company: 1, role: 1 });
       await this.collection.createIndex({ bidStatus: 1 });
@@ -58,6 +60,7 @@ export class MongoDBBidRepository implements IBidRepository {
   private toDocument(bid: Bid): Omit<BidDocument, '_id'> {
     const json = bid.toJSON();
     return {
+      domainId: json.id,
       date: json.date,
       link: json.link,
       company: json.company,
@@ -98,7 +101,7 @@ export class MongoDBBidRepository implements IBidRepository {
     });
 
     // Use Object.defineProperty to set private fields and readonly fields
-    Object.defineProperty(bid, 'id', { value: doc._id.toString(), writable: false });
+    Object.defineProperty(bid, 'id', { value: doc.domainId, writable: false });
     Object.defineProperty(bid, 'date', { value: doc.date, writable: false });
     Object.defineProperty(bid, '_bidStatus', { value: doc.bidStatus as BidStatus, writable: true });
     Object.defineProperty(bid, '_interviewWinning', { value: doc.interviewWinning, writable: true });
@@ -115,22 +118,16 @@ export class MongoDBBidRepository implements IBidRepository {
     const json = bid.toJSON();
     const doc = this.toDocument(bid);
     
+    // Generate a new ObjectId for MongoDB
     await this.collection.insertOne({
-      _id: new ObjectId(json.id.replace('bid-', '')),
+      _id: new ObjectId(),
       ...doc,
     } as BidDocument);
   }
 
   async findById(id: string): Promise<Bid | null> {
-    try {
-      const doc = await this.collection.findOne({ 
-        _id: new ObjectId(id.replace('bid-', '')) 
-      });
-      return doc ? this.toDomain(doc) : null;
-    } catch (error) {
-      // Invalid ObjectId format
-      return null;
-    }
+    const doc = await this.collection.findOne({ domainId: id });
+    return doc ? this.toDomain(doc) : null;
   }
 
   async findAll(filters?: BidFilterOptions, sort?: BidSortOptions): Promise<Bid[]> {
@@ -195,7 +192,7 @@ export class MongoDBBidRepository implements IBidRepository {
     const doc = this.toDocument(bid);
     
     await this.collection.updateOne(
-      { _id: new ObjectId(json.id.replace('bid-', '')) },
+      { domainId: json.id },
       { 
         $set: {
           ...doc,
@@ -206,9 +203,7 @@ export class MongoDBBidRepository implements IBidRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.collection.deleteOne({ 
-      _id: new ObjectId(id.replace('bid-', '')) 
-    });
+    await this.collection.deleteOne({ domainId: id });
   }
 
   async findAllPaginated(filters?: BidFilterOptions, sort?: BidSortOptions, pagination?: BidPaginationOptions): Promise<PaginatedBids> {

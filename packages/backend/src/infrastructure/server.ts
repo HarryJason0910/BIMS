@@ -7,6 +7,7 @@ import { InterviewController } from './InterviewController';
 import { CompanyHistoryController } from './CompanyHistoryController';
 import { TechStackController } from './TechStackController';
 import { AnalyticsController } from './AnalyticsController';
+import { ResumeController } from './ResumeController';
 
 export interface ServerConfig {
   port: number;
@@ -22,6 +23,7 @@ export class Server {
   private companyHistoryController!: CompanyHistoryController;
   private techStackController!: TechStackController;
   private analyticsController!: AnalyticsController;
+  private resumeController!: ResumeController;
 
   constructor(config: ServerConfig, container: Container) {
     this.app = express();
@@ -92,6 +94,11 @@ export class Server {
       this.container.bidRepository,
       this.container.interviewRepository
     );
+
+    this.resumeController = new ResumeController(
+      this.container.getMatchingResumesUseCase,
+      this.container.getResumeFileUseCase
+    );
   }
 
   private setupRoutes(): void {
@@ -104,11 +111,14 @@ export class Server {
     this.app.get('/api/files/:path', this.downloadFile.bind(this));
 
     // Mount controller routes
+    console.log('[Server] Registering API routes...');
     this.app.use('/api/bids', this.bidController.getRouter());
     this.app.use('/api/interviews', this.interviewController.getRouter());
     this.app.use('/api/company-history', this.companyHistoryController.getRouter());
     this.app.use('/api/tech-stacks', this.techStackController.getRouter());
     this.app.use('/api/analytics', this.analyticsController.getRouter());
+    this.app.use('/api/resumes', this.resumeController.getRouter());
+    console.log('[Server] API routes registered successfully');
 
     // Serve static files from frontend build
     const frontendDistPath = path.join(__dirname, '../../../frontend/dist');
@@ -116,8 +126,10 @@ export class Server {
 
     // SPA fallback - serve index.html for all non-API routes
     this.app.get('*', (req: Request, res: Response) => {
+      console.log('[Server] SPA fallback hit for:', req.method, req.path);
       // Don't serve index.html for API routes
       if (req.path.startsWith('/api/')) {
+        console.log('[Server] API route not found:', req.method, req.path);
         return res.status(404).json({
           error: 'Not Found',
           message: `API route ${req.method} ${req.path} not found`,

@@ -17,13 +17,18 @@ import { RebidWithNewResumeUseCase } from '../application/RebidWithNewResumeUseC
 import { ScheduleInterviewUseCase } from '../application/ScheduleInterviewUseCase';
 import { CompleteInterviewUseCase } from '../application/CompleteInterviewUseCase';
 import { CancelInterviewUseCase } from '../application/CancelInterviewUseCase';
+import { GetMatchingResumesUseCase } from '../application/GetMatchingResumesUseCase';
+import { GetResumeFileUseCase } from '../application/GetResumeFileUseCase';
 import { DuplicationDetectionPolicy } from '../domain/DuplicationDetectionPolicy';
 import { InterviewEligibilityPolicy } from '../domain/InterviewEligibilityPolicy';
 import { ResumeCheckerService } from '../domain/ResumeCheckerService';
 import { CompanyHistory } from '../domain/CompanyHistory';
+import { StackMatchCalculator } from '../domain/StackMatchCalculator';
 import { IBidRepository } from '../application/IBidRepository';
 import { IInterviewRepository } from '../application/IInterviewRepository';
 import { ICompanyHistoryRepository } from '../application/ICompanyHistoryRepository';
+import { IResumeRepository } from '../application/IResumeRepository';
+import { FileSystemResumeRepository } from './FileSystemResumeRepository';
 
 export interface ContainerConfig {
   useInMemory?: boolean;
@@ -38,12 +43,14 @@ export class Container {
   public bidRepository!: IBidRepository;
   public interviewRepository!: IInterviewRepository;
   public companyHistoryRepository!: ICompanyHistoryRepository;
+  public resumeRepository!: IResumeRepository;
 
   // Domain Services
   public duplicationDetectionPolicy!: DuplicationDetectionPolicy;
   public interviewEligibilityPolicy!: InterviewEligibilityPolicy;
   public resumeCheckerService!: ResumeCheckerService;
   public fileStorageService!: FileStorageService;
+  public stackMatchCalculator!: StackMatchCalculator;
 
   // Use Cases
   public createBidUseCase!: CreateBidUseCase;
@@ -51,6 +58,8 @@ export class Container {
   public scheduleInterviewUseCase!: ScheduleInterviewUseCase;
   public completeInterviewUseCase!: CompleteInterviewUseCase;
   public cancelInterviewUseCase!: CancelInterviewUseCase;
+  public getMatchingResumesUseCase!: GetMatchingResumesUseCase;
+  public getResumeFileUseCase!: GetResumeFileUseCase;
 
   private constructor() {}
 
@@ -92,6 +101,10 @@ export class Container {
     this.interviewEligibilityPolicy = new InterviewEligibilityPolicy();
     this.resumeCheckerService = new ResumeCheckerService();
     this.fileStorageService = new FileStorageService('./uploads');
+    this.stackMatchCalculator = new StackMatchCalculator();
+
+    // Initialize resume repository (always uses file system, but gets metadata from bids)
+    this.resumeRepository = new FileSystemResumeRepository('./uploads', this.bidRepository);
 
     // Initialize CompanyHistory domain object (used by use cases)
     const companyHistory = new CompanyHistory();
@@ -129,6 +142,15 @@ export class Container {
       this.bidRepository,
       companyHistory,
       this.companyHistoryRepository
+    );
+
+    this.getMatchingResumesUseCase = new GetMatchingResumesUseCase(
+      this.resumeRepository,
+      this.stackMatchCalculator
+    );
+
+    this.getResumeFileUseCase = new GetResumeFileUseCase(
+      this.resumeRepository
     );
 
     console.log('Container initialized successfully');

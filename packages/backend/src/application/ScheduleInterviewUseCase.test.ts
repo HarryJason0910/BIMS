@@ -3,8 +3,8 @@ import { IInterviewRepository } from './IInterviewRepository';
 import { IBidRepository } from './IBidRepository';
 import { InterviewEligibilityPolicy } from '../domain/InterviewEligibilityPolicy';
 import { CompanyHistory } from '../domain/CompanyHistory';
-import { Interview, InterviewBase, InterviewStatus } from '../domain/Interview';
-import { Bid, BidStatus } from '../domain/Bid';
+import { Interview, InterviewBase, InterviewStatus, InterviewType } from '../domain/Interview';
+import { Bid, BidStatus, BidOrigin, RejectionReason } from '../domain/Bid';
 
 describe('ScheduleInterviewUseCase', () => {
   let useCase: ScheduleInterviewUseCase;
@@ -19,6 +19,7 @@ describe('ScheduleInterviewUseCase', () => {
       save: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findAllPaginated: jest.fn(),
       findByCompanyAndRole: jest.fn(),
       findByBidId: jest.fn(),
       update: jest.fn(),
@@ -29,6 +30,7 @@ describe('ScheduleInterviewUseCase', () => {
       save: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findAllPaginated: jest.fn(),
       findByCompanyAndRole: jest.fn(),
       findByLink: jest.fn(),
       update: jest.fn(),
@@ -53,8 +55,9 @@ describe('ScheduleInterviewUseCase', () => {
       client: 'ClientCo',
       role: 'Software Engineer',
       mainStacks: ['TypeScript', 'React'],
-      jobDescription: 'Build amazing software',
-      resume: 'resume_v1.pdf',
+      jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+      resumePath: 'TechCorp_Software_Engineer/resume.pdf',
+      origin: BidOrigin.BID
     });
   };
 
@@ -72,7 +75,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: '',
         jobDescription: '',
         resume: '',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'First round technical interview',
@@ -107,7 +110,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: '',
         jobDescription: '',
         resume: '',
-        interviewType: 'HR',
+        interviewType: InterviewType.HR,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'HR screening',
@@ -136,7 +139,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: '',
         jobDescription: '',
         resume: '',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'Technical round',
@@ -160,7 +163,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: 'Software Engineer',
         jobDescription: 'Build amazing software',
         resume: 'resume_v1.pdf',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'LinkedIn chat interview',
@@ -192,7 +195,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: 'Software Engineer',
         jobDescription: 'Build amazing software',
         resume: 'resume_v1.pdf',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'First interview',
@@ -217,7 +220,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: 'Software Engineer',
         jobDescription: 'Build amazing software',
         resume: 'resume_v1.pdf',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'New Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'Interview with new recruiter',
@@ -244,7 +247,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: 'Software Engineer',
         jobDescription: 'Build amazing software',
         resume: 'resume_v1.pdf',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'Interview attempt',
@@ -279,7 +282,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: 'Software Engineer',
         jobDescription: 'Build amazing software',
         resume: 'resume_v1.pdf',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: '',
         attendees: ['Jane Interviewer'],
         detail: 'Interview',
@@ -298,7 +301,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: 'Software Engineer',
         jobDescription: 'Build amazing software',
         resume: 'resume_v1.pdf',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: [],
         detail: 'Interview',
@@ -317,7 +320,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: '',
         jobDescription: '',
         resume: '',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'Interview',
@@ -339,7 +342,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: '',
         jobDescription: '',
         resume: '',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'Interview',
@@ -358,7 +361,7 @@ describe('ScheduleInterviewUseCase', () => {
         role: 'Software Engineer',
         jobDescription: 'Build amazing software',
         resume: 'resume_v1.pdf',
-        interviewType: 'Technical',
+        interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'John Recruiter',
         attendees: ['Jane Interviewer'],
         detail: 'Interview',

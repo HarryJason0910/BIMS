@@ -38,7 +38,8 @@ export enum BidOrigin {
  */
 export enum RejectionReason {
   ROLE_CLOSED = "Role Closed",
-  UNSATISFIED_RESUME = "Unsatisfied Resume"
+  UNSATISFIED_RESUME = "Unsatisfied Resume",
+  AUTO_REJECTED = "Auto-Rejected (2 weeks)"
 }
 
 /**
@@ -207,6 +208,36 @@ export class Bid {
     }
     this._bidStatus = BidStatus.REJECTED;
     this._rejectionReason = reason;
+  }
+
+  /**
+   * Restore bid from REJECTED status back to SUBMITTED
+   * Used for exceptional cases where auto-rejection needs to be reversed
+   */
+  restoreFromRejection(): void {
+    if (this._bidStatus !== BidStatus.REJECTED) {
+      throw new Error('Can only restore bids that are in REJECTED status');
+    }
+    if (this._interviewWinning) {
+      throw new Error('Cannot restore bid that has reached interview stage');
+    }
+    this._bidStatus = BidStatus.SUBMITTED;
+    this._rejectionReason = null;
+  }
+
+  /**
+   * Check if bid should be auto-rejected (2 weeks old and still in NEW or SUBMITTED status)
+   */
+  shouldAutoReject(): boolean {
+    if (this._bidStatus !== BidStatus.NEW && this._bidStatus !== BidStatus.SUBMITTED) {
+      return false;
+    }
+    
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    twoWeeksAgo.setHours(0, 0, 0, 0);
+    
+    return this.date < twoWeeksAgo;
   }
 
   /**
