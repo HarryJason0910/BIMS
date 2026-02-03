@@ -59,8 +59,8 @@ describe('CompleteInterviewUseCase', () => {
       company: 'TechCorp',
       client: 'ClientCo',
       role: 'Software Engineer',
-      jobDescriptionPath: 'Build amazing software',
-      resumePath: 'resume_v1.pdf',
+      jobDescription: 'Build amazing software',
+      resume: 'resume_v1.pdf',
       interviewType: InterviewType.TECH_INTERVIEW_1,
       recruiter: 'John Recruiter',
       attendees: ['Jane Interviewer', 'Bob Manager'],
@@ -76,8 +76,8 @@ describe('CompleteInterviewUseCase', () => {
       client: 'ClientCo',
       role: 'Software Engineer',
       mainStacks: ['TypeScript', 'React'],
-      jobDescriptionPath: 'Build amazing software',
-      resumePath: 'resume_v1.pdf',
+      jobDescriptionPath: 'TechCorp_Software_Engineer/JD.txt',
+      resumePath: 'TechCorp_Software_Engineer/resume.pdf',
       origin: BidOrigin.BID,
     });
   };
@@ -110,7 +110,21 @@ describe('CompleteInterviewUseCase', () => {
       const bid = createBid();
       bid.markInterviewStarted();
       
-      const interview = createInterview(bid.id);
+      // Create a CLIENT_INTERVIEW (final stage) instead of TECH_INTERVIEW_1
+      const interview = Interview.create({
+        base: InterviewBase.BID,
+        company: 'TechCorp',
+        client: 'ClientCo',
+        role: 'Software Engineer',
+        jobDescription: 'Build amazing software',
+        resume: 'resume_v1.pdf',
+        interviewType: InterviewType.CLIENT_INTERVIEW,
+        recruiter: 'John Recruiter',
+        attendees: ['Jane Interviewer', 'Bob Manager'],
+        detail: 'Final client interview',
+        bidId: bid.id,
+      });
+      
       mockInterviewRepository.findById.mockResolvedValue(interview);
       mockBidRepository.findById.mockResolvedValue(bid);
 
@@ -125,6 +139,7 @@ describe('CompleteInterviewUseCase', () => {
       // Assert
       expect(mockBidRepository.update).toHaveBeenCalledTimes(1);
       const updatedBid = mockBidRepository.update.mock.calls[0][0];
+      // Interview succeeded and it's CLIENT_INTERVIEW (final stage), so bid should be CLOSED
       expect(updatedBid.bidStatus).toBe(BidStatus.CLOSED);
     });
 

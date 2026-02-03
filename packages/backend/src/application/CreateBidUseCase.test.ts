@@ -258,6 +258,41 @@ describe('CreateBidUseCase', () => {
     });
   });
 
+  describe('JD specification association', () => {
+    it('should store jdSpecId when provided', async () => {
+      // Arrange
+      const request = createValidRequest();
+      request.jdSpecId = 'jd-spec-123';
+      mockBidRepository.findAll.mockResolvedValue([]);
+
+      // Act
+      const response = await useCase.execute(request);
+
+      // Assert
+      expect(response.bidId).toBeDefined();
+      expect(mockBidRepository.save).toHaveBeenCalledTimes(1);
+
+      const savedBid = mockBidRepository.save.mock.calls[0][0];
+      expect(savedBid.jdSpecId).toBe('jd-spec-123');
+    });
+
+    it('should create bid without jdSpecId when not provided', async () => {
+      // Arrange
+      const request = createValidRequest();
+      mockBidRepository.findAll.mockResolvedValue([]);
+
+      // Act
+      const response = await useCase.execute(request);
+
+      // Assert
+      expect(response.bidId).toBeDefined();
+      expect(mockBidRepository.save).toHaveBeenCalledTimes(1);
+
+      const savedBid = mockBidRepository.save.mock.calls[0][0];
+      expect(savedBid.jdSpecId).toBeNull();
+    });
+  });
+
   describe('resume selection from history', () => {
     let mockResumeRepository: jest.Mocked<IResumeRepository>;
     let useCaseWithResumeRepo: CreateBidUseCase;
@@ -268,6 +303,7 @@ describe('CreateBidUseCase', () => {
         getAllResumeMetadata: jest.fn(),
         getResumeFile: jest.fn(),
         fileExists: jest.fn(),
+        findByJDSpecId: jest.fn(),
       };
 
       useCaseWithResumeRepo = new CreateBidUseCase(

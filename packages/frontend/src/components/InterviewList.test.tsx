@@ -34,7 +34,8 @@ describe('InterviewList', () => {
     vi.mocked(apiModule.apiClient.getInterviews).mockImplementation(() => new Promise(() => {}));
 
     render(<InterviewList />, { wrapper: createWrapper() });
-    expect(screen.getByText(/loading interviews/i)).toBeInTheDocument();
+    // Component shows CircularProgress without text, so check for progressbar role
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
   it('should render empty state when no interviews', async () => {

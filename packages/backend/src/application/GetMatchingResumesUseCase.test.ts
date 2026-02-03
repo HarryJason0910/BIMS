@@ -87,6 +87,8 @@ describe('GetMatchingResumesUseCase', () => {
         techStack: ['React', 'TypeScript', 'Node.js'],
         score: 100,
         createdAt: createdDate,
+        matchedSkills: expect.any(Array),
+        missingSkills: expect.any(Array),
       });
     });
 

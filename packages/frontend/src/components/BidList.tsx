@@ -13,6 +13,7 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import { apiClient } from '../api';
 import { Bid, BidFilters, SortOptions, BidStatus, ResumeCheckerType, RejectionReason, PaginatedResponse } from '../api/types';
 import { RejectionReasonModal } from './RejectionReasonModal';
+import { BidMatchRateDisplay } from './BidMatchRateDisplay';
 
 interface BidListProps {
   filters?: BidFilters;
@@ -28,6 +29,8 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const [rejectionModalOpen, setRejectionModalOpen] = React.useState(false);
   const [selectedBidForRejection, setSelectedBidForRejection] = React.useState<Bid | null>(null);
+  const [matchRateDialogOpen, setMatchRateDialogOpen] = React.useState(false);
+  const [selectedBidForMatchRate, setSelectedBidForMatchRate] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
   
   const { data, isLoading, error } = useQuery({
@@ -129,6 +132,12 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
       console.error('Failed to restore bid:', error);
       alert('Failed to restore bid: ' + (error as Error).message);
     }
+  };
+
+  const handleFindSimilarBids = (bidId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedBidForMatchRate(bidId);
+    setMatchRateDialogOpen(true);
   };
 
   const getStatusColor = (status: BidStatus): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
@@ -375,6 +384,14 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      onClick={(e) => handleFindSimilarBids(bid.id, e)}
+                      variant="outlined"
+                      size="small"
+                      color="info"
+                    >
+                      Similar
+                    </Button>
                     {(bid.status === BidStatus.NEW || bid.status === BidStatus.SUBMITTED) && (
                       <Button
                         onClick={(e) => {
@@ -463,6 +480,17 @@ export const BidList: React.FC<BidListProps> = ({ filters, sort, onBidSelect, on
         companyName={selectedBidForRejection?.company || ''}
         roleName={selectedBidForRejection?.role || ''}
       />
+
+      {selectedBidForMatchRate && (
+        <BidMatchRateDisplay
+          bidId={selectedBidForMatchRate}
+          open={matchRateDialogOpen}
+          onClose={() => {
+            setMatchRateDialogOpen(false);
+            setSelectedBidForMatchRate(null);
+          }}
+        />
+      )}
     </Box>
   );
 };

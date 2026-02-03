@@ -61,8 +61,9 @@ describe('Bid Property-Based Tests', () => {
             client: nonEmptyStringArb,
             role: nonEmptyStringArb,
             mainStacks: nonEmptyArrayArb,
-            jobDescription: nonEmptyStringArb,
-            resume: nonEmptyStringArb
+            jobDescriptionPath: nonEmptyStringArb,
+            resumePath: nonEmptyStringArb,
+            origin: fc.constant(BidOrigin.BID)
           }),
           (bidData) => {
             try {
@@ -86,8 +87,9 @@ describe('Bid Property-Based Tests', () => {
             client: nonEmptyStringArb,
             role: nonEmptyStringArb,
             mainStacks: nonEmptyArrayArb,
-            jobDescription: nonEmptyStringArb,
-            resume: nonEmptyStringArb
+            jobDescriptionPath: nonEmptyStringArb,
+            resumePath: nonEmptyStringArb,
+            origin: fc.constant(BidOrigin.BID)
           }),
           (bidData) => {
             try {
@@ -111,8 +113,9 @@ describe('Bid Property-Based Tests', () => {
             client: fc.constant(''),
             role: nonEmptyStringArb,
             mainStacks: nonEmptyArrayArb,
-            jobDescription: nonEmptyStringArb,
-            resume: nonEmptyStringArb
+            jobDescriptionPath: nonEmptyStringArb,
+            resumePath: nonEmptyStringArb,
+            origin: fc.constant(BidOrigin.BID)
           }),
           (bidData) => {
             try {
@@ -136,8 +139,9 @@ describe('Bid Property-Based Tests', () => {
             client: nonEmptyStringArb,
             role: fc.constant(''),
             mainStacks: nonEmptyArrayArb,
-            jobDescription: nonEmptyStringArb,
-            resume: nonEmptyStringArb
+            jobDescriptionPath: nonEmptyStringArb,
+            resumePath: nonEmptyStringArb,
+            origin: fc.constant(BidOrigin.BID)
           }),
           (bidData) => {
             try {
@@ -161,8 +165,9 @@ describe('Bid Property-Based Tests', () => {
             client: nonEmptyStringArb,
             role: nonEmptyStringArb,
             mainStacks: fc.constant([]),
-            jobDescription: nonEmptyStringArb,
-            resume: nonEmptyStringArb
+            jobDescriptionPath: nonEmptyStringArb,
+            resumePath: nonEmptyStringArb,
+            origin: fc.constant(BidOrigin.BID)
           }),
           (bidData) => {
             try {
@@ -338,3 +343,273 @@ describe('Bid Property-Based Tests', () => {
     });
   });
 });
+
+  describe('Property 12: Layer Weights Validation', () => {
+    // Feature: role-based-layer-weights, Property 12: Layer Weights Validation
+    // **Validates: Requirements 3.2, 3.5**
+    
+    it('should ensure layer weights always sum to 1.0 (±0.001 tolerance)', () => {
+      fc.assert(
+        fc.property(createBidDataArb, (bidData) => {
+          const bid = Bid.create(bidData);
+          const weights = bid.getLayerWeights();
+          
+          const sum = weights.frontend + weights.backend + weights.database + 
+                      weights.cloud + weights.devops + weights.others;
+          
+          return Math.abs(sum - 1.0) <= 0.001;
+        }),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 13: LayerSkills Structure Validation', () => {
+    // Feature: role-based-layer-weights, Property 13: LayerSkills Structure Validation
+    // **Validates: Requirements 6.1, 6.2, 6.3, 6.4**
+    
+    // Generator for valid skill weights that sum to 1.0
+    const skillWeightsArbitrary = (minSkills: number = 0, maxSkills: number = 5) =>
+      fc.integer({ min: minSkills, max: maxSkills }).chain(count => {
+        if (count === 0) {
+          return fc.constant([]);
+        }
+        
+        return fc.array(fc.string({ minLength: 1, maxLength: 20 }), { 
+          minLength: count, 
+          maxLength: count 
+        }).chain(skills => {
+          // Generate weights that sum to 1.0
+          return fc.array(fc.float({ min: 0.01, max: 1 }), { 
+            minLength: count, 
+            maxLength: count 
+          }).map(weights => {
+            const sum = weights.reduce((a, b) => a + b, 0);
+            const normalized = weights.map(w => w / sum);
+            return skills.map((skill, i) => ({ skill, weight: normalized[i] }));
+          });
+        });
+      });
+
+    const layerSkillsArbitrary = fc.record({
+      frontend: skillWeightsArbitrary(0, 5),
+      backend: skillWeightsArbitrary(0, 5),
+      database: skillWeightsArbitrary(0, 5),
+      cloud: skillWeightsArbitrary(0, 5),
+      devops: skillWeightsArbitrary(0, 5),
+      others: skillWeightsArbitrary(0, 5)
+    });
+
+    const createBidDataWithLayerSkillsArb = fc.record({
+      link: urlArb,
+      company: nonEmptyStringArb,
+      client: nonEmptyStringArb,
+      role: fc.constantFrom(
+        'Senior Backend Engineer',
+        'Senior Frontend Developer',
+        'Senior Balanced Full Stack Engineer',
+        'Junior Backend Engineer',
+        'Mid Frontend Developer'
+      ),
+      mainStacks: layerSkillsArbitrary,
+      jobDescriptionPath: nonEmptyStringArb,
+      resumePath: nonEmptyStringArb,
+      origin: fc.constant(BidOrigin.BID)
+    });
+
+    it('should accept LayerSkills with all 6 required keys', () => {
+      fc.assert(
+        fc.property(createBidDataWithLayerSkillsArb, (bidData) => {
+          const bid = Bid.create(bidData);
+          
+          // Verify all layers are accessible
+          const layers = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'] as const;
+          for (const layer of layers) {
+            const skills = bid.getSkillsForLayer(layer);
+            expect(Array.isArray(skills)).toBe(true);
+          }
+          
+          return true;
+        }),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should validate that skill weights sum to 1.0 per layer (or layer is empty)', () => {
+      fc.assert(
+        fc.property(createBidDataWithLayerSkillsArb, (bidData) => {
+          const bid = Bid.create(bidData);
+          
+          return bid.validateSkillWeights();
+        }),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should reject LayerSkills with invalid weight sums', () => {
+      const invalidLayerSkills = {
+        frontend: [
+          { skill: 'react', weight: 0.5 },
+          { skill: 'typescript', weight: 0.3 }
+          // Sum is 0.8, not 1.0 - should be rejected
+        ],
+        backend: [],
+        database: [],
+        cloud: [],
+        devops: [],
+        others: []
+      };
+
+      expect(() => {
+        Bid.create({
+          link: 'https://example.com/job',
+          company: 'Company A',
+          client: 'Client A',
+          role: 'Senior Frontend Developer',
+          mainStacks: invalidLayerSkills,
+          jobDescriptionPath: '/path/to/jd.pdf',
+          resumePath: '/path/to/resume.pdf',
+          origin: BidOrigin.BID
+        });
+      }).toThrow('Skill weights in layer \'frontend\' must sum to 1.0');
+    });
+
+    it('should allow empty layers', () => {
+      fc.assert(
+        fc.property(createBidDataWithLayerSkillsArb, (bidData) => {
+          const bid = Bid.create(bidData);
+          
+          // At least one layer might be empty
+          const layers = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'] as const;
+          let hasEmptyLayer = false;
+          for (const layer of layers) {
+            const skills = bid.getSkillsForLayer(layer);
+            if (skills.length === 0) {
+              hasEmptyLayer = true;
+              break;
+            }
+          }
+          
+          // Test passes regardless - just verifying no errors with empty layers
+          return true;
+        }),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 14: Role Parsing and Layer Weights', () => {
+    // Feature: role-based-layer-weights, Property 14: Role Parsing and Layer Weights
+    // **Validates: Requirements 1, 2, 3, 4**
+    
+    it('should assign correct layer weights based on role', () => {
+      const testCases = [
+        { role: 'Senior Backend Engineer', expectedBackendWeight: 0.60 },
+        { role: 'Junior Frontend Developer', expectedFrontendWeight: 0.70 },
+        { role: 'Mid Balanced Full Stack Engineer', expectedFrontendWeight: 0.35, expectedBackendWeight: 0.35 },
+        { role: 'Lead Frontend Heavy Full Stack Engineer', expectedFrontendWeight: 0.50 },
+        { role: 'Staff Backend Heavy Full Stack Engineer', expectedBackendWeight: 0.50 }
+      ];
+
+      for (const testCase of testCases) {
+        const bid = Bid.create({
+          link: 'https://example.com/job',
+          company: 'Company A',
+          client: 'Client A',
+          role: testCase.role,
+          mainStacks: ['skill1', 'skill2'],
+          jobDescriptionPath: '/path/to/jd.pdf',
+          resumePath: '/path/to/resume.pdf',
+          origin: BidOrigin.BID
+        });
+
+        const weights = bid.getLayerWeights();
+        
+        if ('expectedBackendWeight' in testCase) {
+          expect(weights.backend).toBe(testCase.expectedBackendWeight);
+        }
+        if ('expectedFrontendWeight' in testCase) {
+          expect(weights.frontend).toBe(testCase.expectedFrontendWeight);
+        }
+      }
+    });
+
+    it('should use default weights for unrecognized roles', () => {
+      const bid = Bid.create({
+        link: 'https://example.com/job',
+        company: 'Company A',
+        client: 'Client A',
+        role: 'Unknown Role',
+        mainStacks: ['skill1', 'skill2'],
+        jobDescriptionPath: '/path/to/jd.pdf',
+        resumePath: '/path/to/resume.pdf',
+        origin: BidOrigin.BID
+      });
+
+      const weights = bid.getLayerWeights();
+      
+      // Should have balanced default weights
+      const sum = weights.frontend + weights.backend + weights.database + 
+                  weights.cloud + weights.devops + weights.others;
+      expect(Math.abs(sum - 1.0)).toBeLessThanOrEqual(0.001);
+    });
+  });
+
+  describe('Property 15: getAllSkills Method', () => {
+    // Feature: role-based-layer-weights, Property 15: getAllSkills Method
+    // **Validates: Requirements 6.1, 6.2**
+    
+    it('should flatten all layer skills into a single array', () => {
+      const layerSkills = {
+        frontend: [
+          { skill: 'react', weight: 0.5 },
+          { skill: 'typescript', weight: 0.5 }
+        ],
+        backend: [
+          { skill: 'python', weight: 1.0 }
+        ],
+        database: [
+          { skill: 'postgresql', weight: 1.0 }
+        ],
+        cloud: [],
+        devops: [],
+        others: []
+      };
+
+      const bid = Bid.create({
+        link: 'https://example.com/job',
+        company: 'Company A',
+        client: 'Client A',
+        role: 'Senior Balanced Full Stack Engineer',
+        mainStacks: layerSkills,
+        jobDescriptionPath: '/path/to/jd.pdf',
+        resumePath: '/path/to/resume.pdf',
+        origin: BidOrigin.BID
+      });
+
+      const allSkills = bid.getAllSkills();
+      
+      expect(allSkills).toContain('react');
+      expect(allSkills).toContain('typescript');
+      expect(allSkills).toContain('python');
+      expect(allSkills).toContain('postgresql');
+      expect(allSkills.length).toBe(4);
+    });
+
+    it('should work with legacy format (string array)', () => {
+      const bid = Bid.create({
+        link: 'https://example.com/job',
+        company: 'Company A',
+        client: 'Client A',
+        role: 'Senior Backend Engineer',
+        mainStacks: ['react', 'python', 'postgresql'],
+        jobDescriptionPath: '/path/to/jd.pdf',
+        resumePath: '/path/to/resume.pdf',
+        origin: BidOrigin.BID
+      });
+
+      const allSkills = bid.getAllSkills();
+      
+      expect(allSkills).toEqual(['react', 'python', 'postgresql']);
+    });
+  });

@@ -12,6 +12,7 @@ import {
   RebidRequest,
   RebidResponse,
   BidFilters,
+  BidMatchRateResult,
   Interview,
   ScheduleInterviewRequest,
   ScheduleInterviewResponse,
@@ -21,7 +22,18 @@ import {
   CompanyHistory,
   SortOptions,
   PaginationOptions,
-  PaginatedResponse
+  PaginatedResponse,
+  CreateJDSpecRequest,
+  CreateJDSpecResponse,
+  CanonicalJDSpec,
+  SkillDictionary,
+  CanonicalSkill,
+  UnknownSkillItem,
+  CorrelationResult,
+  ResumeMatchRate,
+  SkillStatistics,
+  TechLayer,
+  LayerSkills
 } from './types';
 
 /**
@@ -124,6 +136,11 @@ export class ApiClient {
     formData.append('role', request.role);
     formData.append('mainStacks', JSON.stringify(request.mainStacks));
     formData.append('jobDescription', request.jobDescription);
+    
+    // Add optional layerWeights if provided
+    if (request.layerWeights) {
+      formData.append('layerWeights', JSON.stringify(request.layerWeights));
+    }
     
     // Handle either uploaded file or selected resume ID
     if (request.resumeFile) {
@@ -261,6 +278,16 @@ export class ApiClient {
       const response = await this.client.get(`/api/bids/${bidId}/jd`, {
         responseType: 'blob'
       });
+      return response.data;
+    });
+  }
+
+  /**
+   * Get bid match rates - compare current bid against all other bids
+   */
+  async getBidMatchRate(bidId: string): Promise<BidMatchRateResult[]> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<BidMatchRateResult[]>(`/api/bids/${bidId}/match-rate`);
       return response.data;
     });
   }
@@ -549,6 +576,235 @@ export class ApiClient {
   async get<T>(url: string, config?: { params?: any }): Promise<T> {
     return this.withRetry(async () => {
       const response = await this.client.get<T>(url, config);
+      return response.data;
+    });
+  }
+
+  // ==================== JD SPECIFICATION ENDPOINTS ====================
+
+  /**
+   * Create a new JD specification
+   */
+  async createJDSpec(request: CreateJDSpecRequest): Promise<CreateJDSpecResponse> {
+    const response = await this.client.post<CreateJDSpecResponse>('/api/jd/create', request);
+    return response.data;
+  }
+
+  /**
+   * Get a JD specification by ID
+   */
+  async getJDSpecById(id: string): Promise<CanonicalJDSpec> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<CanonicalJDSpec>(`/api/jd/${id}`);
+      return response.data;
+    });
+  }
+
+  /**
+   * Get all JD specifications
+   */
+  async getAllJDSpecs(): Promise<{ success: boolean; count: number; jdSpecs: CanonicalJDSpec[] }> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<{ success: boolean; count: number; jdSpecs: CanonicalJDSpec[] }>('/api/jd');
+      return response.data;
+    });
+  }
+
+  /**
+   * Update a JD specification
+   */
+  async updateJDSpec(id: string, request: CreateJDSpecRequest): Promise<{ message: string; jdSpec: CanonicalJDSpec; unknownSkills: string[] }> {
+    const response = await this.client.put<{ message: string; jdSpec: CanonicalJDSpec; unknownSkills: string[] }>(`/api/jd/${id}`, request);
+    return response.data;
+  }
+
+  /**
+   * Delete a JD specification
+   */
+  async deleteJDSpec(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.delete<{ success: boolean; message: string }>(`/api/jd/${id}`);
+    return response.data;
+  }
+
+  /**
+   * Calculate correlation between two JD specifications
+   */
+  async calculateJDCorrelation(currentJDId: string, historicalJDId: string): Promise<CorrelationResult> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<CorrelationResult>('/api/jd/correlation', {
+        params: { currentJDId, historicalJDId }
+      });
+      return response.data;
+    });
+  }
+
+  // ==================== SKILL DICTIONARY ENDPOINTS ====================
+
+  /**
+   * Get current skill dictionary
+   */
+  async getCurrentDictionary(): Promise<SkillDictionary> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<SkillDictionary>('/api/dictionary/current');
+      return response.data;
+    });
+  }
+
+  /**
+   * Get skill dictionary by version
+   */
+  async getDictionaryByVersion(version: string): Promise<SkillDictionary> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<SkillDictionary>(`/api/dictionary/version/${version}`);
+      return response.data;
+    });
+  }
+
+  /**
+   * Get all canonical skills
+   */
+  async getAllSkills(): Promise<{ skills: LayerSkills; version: string }> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<{ skills: LayerSkills; version: string }>('/api/dictionary/skills');
+      return response.data;
+    });
+  }
+
+  /**
+   * Add a canonical skill
+   */
+  async addCanonicalSkill(name: string, category: TechLayer): Promise<{ message: string; skill: CanonicalSkill; version: string }> {
+    const response = await this.client.post<{ message: string; skill: CanonicalSkill; version: string }>('/api/dictionary/skills', { name, category });
+    return response.data;
+  }
+
+  /**
+   * Remove a canonical skill
+   */
+  async removeCanonicalSkill(name: string): Promise<{ message: string; version: string }> {
+    const response = await this.client.delete<{ message: string; version: string }>(`/api/dictionary/skills/${name}`);
+    return response.data;
+  }
+
+  /**
+   * Add a skill variation
+   */
+  async addSkillVariation(variation: string, canonicalName: string): Promise<{ message: string; canonicalSkill: CanonicalSkill; version: string }> {
+    const response = await this.client.post<{ message: string; canonicalSkill: CanonicalSkill; version: string }>('/api/dictionary/variations', { variation, canonicalName });
+    return response.data;
+  }
+
+  /**
+   * Get variations for a canonical skill
+   */
+  async getSkillVariations(canonicalName: string): Promise<{ canonicalName: string; variations: string[] }> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<{ canonicalName: string; variations: string[] }>(`/api/dictionary/variations/${canonicalName}`);
+      return response.data;
+    });
+  }
+
+  /**
+   * Export skill dictionary
+   */
+  async exportDictionary(version?: string): Promise<{ dictionary: SkillDictionary }> {
+    return this.withRetry(async () => {
+      const response = await this.client.post<{ dictionary: SkillDictionary }>('/api/dictionary/export', { version });
+      return response.data;
+    });
+  }
+
+  /**
+   * Import skill dictionary
+   */
+  async importDictionary(dictionaryData: SkillDictionary, mode: 'replace' | 'merge' = 'replace', allowOlderVersion: boolean = false): Promise<{ message: string; version: string; skillsAdded: number }> {
+    const response = await this.client.post<{ message: string; version: string; skillsAdded: number }>('/api/dictionary/import', { dictionaryData, mode, allowOlderVersion });
+    return response.data;
+  }
+
+  // ==================== SKILL REVIEW QUEUE ENDPOINTS ====================
+
+  /**
+   * Get unknown skills review queue
+   */
+  async getReviewQueue(): Promise<{ items: UnknownSkillItem[] }> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<{ items: UnknownSkillItem[] }>('/api/skills/review-queue');
+      return response.data;
+    });
+  }
+
+  /**
+   * Approve a skill as canonical or variation
+   */
+  async approveSkill(skillName: string, approvalType: 'canonical' | 'variation', category?: TechLayer, canonicalName?: string): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>('/api/skills/review-queue/approve', {
+      skillName,
+      approvalType,
+      category,
+      canonicalName
+    });
+    return response.data;
+  }
+
+  /**
+   * Reject a skill
+   */
+  async rejectSkill(skillName: string, reason: string): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>('/api/skills/review-queue/reject', { skillName, reason });
+    return response.data;
+  }
+
+  // ==================== RESUME MATCH RATE ENDPOINTS ====================
+
+  /**
+   * Calculate match rates for all resumes against a current JD
+   */
+  async calculateResumeMatchRates(currentJDId: string): Promise<{ matchRates: ResumeMatchRate[] }> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<{ matchRates: ResumeMatchRate[] }>('/api/resume/match-rate', {
+        params: { currentJDId }
+      });
+      return response.data;
+    });
+  }
+
+  /**
+   * Get match rate for a specific resume
+   */
+  async getResumeMatchRate(resumeId: string, currentJDId: string): Promise<ResumeMatchRate> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<ResumeMatchRate>(`/api/resume/${resumeId}/match-rate`, {
+        params: { currentJDId }
+      });
+      return response.data;
+    });
+  }
+
+  // ==================== SKILL STATISTICS ENDPOINTS ====================
+
+  /**
+   * Get skill usage statistics
+   */
+  async getSkillStatistics(params?: {
+    category?: TechLayer;
+    sortBy?: 'frequency' | 'name';
+    sortOrder?: 'asc' | 'desc';
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<{ statistics: SkillStatistics[] }> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<{ statistics: SkillStatistics[] }>('/api/statistics/skills', { params });
+      return response.data;
+    });
+  }
+
+  /**
+   * Get statistics for a specific skill
+   */
+  async getSkillStatisticsByName(skillName: string): Promise<SkillStatistics> {
+    return this.withRetry(async () => {
+      const response = await this.client.get<SkillStatistics>(`/api/statistics/skills/${skillName}`);
       return response.data;
     });
   }

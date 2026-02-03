@@ -107,7 +107,8 @@ export interface Bid {
   company: string;
   client: string;
   role: string;
-  mainStacks: string[];
+  mainStacks: string[] | LayerSkills; // Support both legacy (string[]) and new (LayerSkills) formats
+  layerWeights?: LayerWeights; // Optional - defaults from role if not provided
   jobDescriptionPath: string;
   resumePath: string;
   origin: BidOrigin;
@@ -127,7 +128,8 @@ export interface CreateBidRequest {
   company: string;
   client: string;
   role: string;
-  mainStacks: string[];
+  mainStacks: string[] | LayerSkills; // Support both legacy (string[]) and new (LayerSkills) formats
+  layerWeights?: LayerWeights; // Optional - defaults from role if not provided
   jobDescription: string;
   resumeFile?: File;  // Optional - used when uploading new resume
   resumeId?: string;  // Optional - used when selecting from history
@@ -154,6 +156,24 @@ export interface RebidRequest {
 
 export interface RebidResponse {
   newBidId: string;
+}
+
+// Bid Match Rate Types
+export interface BidMatchRateResult {
+  bidId: string;
+  company: string;
+  role: string;
+  matchRate: number; // 0-1
+  matchRatePercentage: number; // 0-100
+  layerBreakdown: LayerMatchResult[];
+}
+
+export interface LayerMatchResult {
+  layer: TechLayer;
+  matchRate: number; // 0-1 (layer score)
+  weight: number; // Layer weight from current bid
+  matchingSkills: string[];
+  missingSkills: string[];
 }
 
 // Interview Types
@@ -274,4 +294,102 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+// Enhanced Skill Matching Types
+export type TechLayer = 'frontend' | 'backend' | 'database' | 'cloud' | 'devops' | 'others';
+
+export interface LayerWeights {
+  frontend: number;
+  backend: number;
+  database: number;
+  cloud: number;
+  devops: number;
+  others: number;
+}
+
+export interface SkillWeight {
+  skill: string;
+  weight: number;
+}
+
+export interface LayerSkills {
+  frontend: SkillWeight[];
+  backend: SkillWeight[];
+  database: SkillWeight[];
+  cloud: SkillWeight[];
+  devops: SkillWeight[];
+  others: SkillWeight[];
+}
+
+export interface CanonicalJDSpec {
+  id: string;
+  role: string;
+  layerWeights: LayerWeights;
+  skills: LayerSkills;
+  dictionaryVersion: string;
+  createdAt: string;
+}
+
+export interface CreateJDSpecRequest {
+  role: string;
+  layerWeights: LayerWeights;
+  skills: LayerSkills;
+}
+
+export interface CreateJDSpecResponse {
+  jdSpec: CanonicalJDSpec;
+  unknownSkills: string[];
+}
+
+export interface CanonicalSkill {
+  name: string;
+  category: TechLayer;
+  variations: string[];
+}
+
+export interface UnknownSkillItem {
+  name: string;
+  frequency: number;
+  firstSeen: string;
+  lastSeen: string;
+  sources: string[];
+}
+
+export interface SkillDictionary {
+  version: string;
+  skills: CanonicalSkill[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CorrelationResult {
+  overallScore: number;
+  layerBreakdown: LayerCorrelationResult[];
+  dictionaryVersion: string;
+}
+
+export interface LayerCorrelationResult {
+  layer: TechLayer;
+  score: number;
+  weight: number;
+  matchingSkills: string[];
+  missingSkills: string[];
+}
+
+export interface ResumeMatchRate {
+  resumeId: string;
+  matchRate: number;
+  correlation: CorrelationResult;
+}
+
+export interface SkillStatistics {
+  skillName: string;
+  category: TechLayer;
+  jdCount: number;
+  resumeCount: number;
+  totalUsage: number;
+  firstSeen: string;
+  lastSeen: string;
+  variations: string[];
 }

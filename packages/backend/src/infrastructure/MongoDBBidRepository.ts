@@ -2,6 +2,8 @@ import { Collection, ObjectId } from 'mongodb';
 import { IBidRepository, BidFilterOptions, BidSortOptions, BidPaginationOptions, PaginatedBids } from '../application/IBidRepository';
 import { Bid, BidStatus, ResumeCheckerType, BidOrigin } from '../domain/Bid';
 import { MongoDBConnection } from './MongoDBConnection';
+import { LayerWeights, LayerSkills } from '../domain/JDSpecTypes';
+import { RoleService } from '../domain/RoleService';
 
 /**
  * MongoDB document interface for Bid
@@ -15,7 +17,8 @@ interface BidDocument {
   company: string;
   client: string;
   role: string;
-  mainStacks: string[];
+  mainStacks: string[] | LayerSkills; // Support both legacy and new formats
+  layerWeights?: LayerWeights; // Optional for backward compatibility
   jobDescriptionPath: string;
   resumePath: string;
   origin: string;
@@ -67,6 +70,7 @@ export class MongoDBBidRepository implements IBidRepository {
       client: json.client,
       role: json.role,
       mainStacks: json.mainStacks,
+      layerWeights: json.layerWeights,
       jobDescriptionPath: json.jobDescriptionPath,
       resumePath: json.resumePath,
       origin: json.origin,
@@ -84,8 +88,28 @@ export class MongoDBBidRepository implements IBidRepository {
   /**
    * Convert MongoDB document to domain Bid
    * Uses reflection to reconstruct the Bid object with private fields
+   * Handles migration: if layerWeights missing, compute from role
    */
   private toDomain(doc: BidDocument): Bid {
+    // Handle migration: if layerWeights missing, compute from role
+    let layerWeights = doc.layerWeights;
+    if (!layerWeights) {
+      const roleService = new RoleService();
+      try {
+        layerWeights = roleService.getDefaultLayerWeights(doc.role);
+      } catch (error) {
+        // If role is not recognized, use balanced weights
+        layerWeights = {
+          frontend: 0.25,
+          backend: 0.25,
+          database: 0.20,
+          cloud: 0.15,
+          devops: 0.10,
+          others: 0.05
+        };
+      }
+    }
+
     // Create a bid using the static factory method first
     const bid = Bid.create({
       link: doc.link,
@@ -93,6 +117,7 @@ export class MongoDBBidRepository implements IBidRepository {
       client: doc.client,
       role: doc.role,
       mainStacks: doc.mainStacks,
+      layerWeights: layerWeights,
       jobDescriptionPath: doc.jobDescriptionPath,
       resumePath: doc.resumePath,
       origin: doc.origin as BidOrigin,
@@ -115,7 +140,6 @@ export class MongoDBBidRepository implements IBidRepository {
   }
 
   async save(bid: Bid): Promise<void> {
-    const json = bid.toJSON();
     const doc = this.toDocument(bid);
     
     // Generate a new ObjectId for MongoDB

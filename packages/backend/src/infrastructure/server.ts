@@ -8,6 +8,12 @@ import { CompanyHistoryController } from './CompanyHistoryController';
 import { TechStackController } from './TechStackController';
 import { AnalyticsController } from './AnalyticsController';
 import { ResumeController } from './ResumeController';
+import { JDSpecController } from './JDSpecController';
+import { SkillDictionaryController } from './SkillDictionaryController';
+import { SkillReviewController } from './SkillReviewController';
+import { ResumeMatchController } from './ResumeMatchController';
+import { SkillStatisticsController } from './SkillStatisticsController';
+import { BidMatchRateController } from './BidMatchRateController';
 
 export interface ServerConfig {
   port: number;
@@ -24,6 +30,12 @@ export class Server {
   private techStackController!: TechStackController;
   private analyticsController!: AnalyticsController;
   private resumeController!: ResumeController;
+  private jdSpecController!: JDSpecController;
+  private skillDictionaryController!: SkillDictionaryController;
+  private skillReviewController!: SkillReviewController;
+  private resumeMatchController!: ResumeMatchController;
+  private skillStatisticsController!: SkillStatisticsController;
+  private bidMatchRateController!: BidMatchRateController;
 
   constructor(config: ServerConfig, container: Container) {
     this.app = express();
@@ -99,6 +111,36 @@ export class Server {
       this.container.getMatchingResumesUseCase,
       this.container.getResumeFileUseCase
     );
+
+    // Enhanced skill matching controllers
+    this.jdSpecController = new JDSpecController(
+      this.container.createJDSpecUseCase,
+      this.container.calculateCorrelationUseCase,
+      this.container.jdSpecRepository
+    );
+
+    this.skillDictionaryController = new SkillDictionaryController(
+      this.container.manageSkillDictionaryUseCase,
+      this.container.exportDictionaryUseCase,
+      this.container.importDictionaryUseCase,
+      this.container.skillDictionaryRepository
+    );
+
+    this.skillReviewController = new SkillReviewController(
+      this.container.reviewUnknownSkillsUseCase
+    );
+
+    this.resumeMatchController = new ResumeMatchController(
+      this.container.calculateResumeMatchRateUseCase
+    );
+
+    this.skillStatisticsController = new SkillStatisticsController(
+      this.container.skillUsageStatisticsUseCase
+    );
+
+    this.bidMatchRateController = new BidMatchRateController(
+      this.container.calculateBidMatchRateUseCase
+    );
   }
 
   private setupRoutes(): void {
@@ -113,11 +155,17 @@ export class Server {
     // Mount controller routes
     console.log('[Server] Registering API routes...');
     this.app.use('/api/bids', this.bidController.getRouter());
+    this.app.use('/api/bids', this.bidMatchRateController.getRouter()); // Match rate routes
     this.app.use('/api/interviews', this.interviewController.getRouter());
     this.app.use('/api/company-history', this.companyHistoryController.getRouter());
     this.app.use('/api/tech-stacks', this.techStackController.getRouter());
     this.app.use('/api/analytics', this.analyticsController.getRouter());
     this.app.use('/api/resumes', this.resumeController.getRouter());
+    this.app.use('/api/jd', this.jdSpecController.getRouter());
+    this.app.use('/api/dictionary', this.skillDictionaryController.getRouter());
+    this.app.use('/api/skills', this.skillReviewController.getRouter());
+    this.app.use('/api/resume', this.resumeMatchController.getRouter());
+    this.app.use('/api/statistics', this.skillStatisticsController.getRouter());
     console.log('[Server] API routes registered successfully');
 
     // Serve static files from frontend build

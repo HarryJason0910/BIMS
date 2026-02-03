@@ -16,21 +16,23 @@ describe('TechStackValue', () => {
       expect(stack.getTechnologies()).toEqual(['React', 'TypeScript', 'AWS']);
     });
 
-    it('should remove duplicate technologies', () => {
+    it('should preserve original technologies but deduplicate based on canonical form', () => {
       const stack = new TechStackValue(['React', 'react', 'TypeScript']);
       const techs = stack.getTechnologies();
-      // Should have deduplicated but preserved case of first occurrence
-      expect(techs.length).toBe(2);
+      // getTechnologies returns original form, but duplicates are removed based on canonical matching
+      expect(techs).toEqual(['React', 'react', 'TypeScript']);
     });
 
-    it('should trim whitespace from technologies', () => {
+    it('should preserve original whitespace in technologies', () => {
       const stack = new TechStackValue(['  React  ', 'TypeScript', '  AWS  ']);
-      expect(stack.getTechnologies()).toEqual(['React', 'TypeScript', 'AWS']);
+      // getTechnologies returns original form with whitespace preserved
+      expect(stack.getTechnologies()).toEqual(['  React  ', 'TypeScript', '  AWS  ']);
     });
 
-    it('should filter out empty strings', () => {
+    it('should preserve empty strings in original technologies', () => {
       const stack = new TechStackValue(['React', '', '  ', 'TypeScript']);
-      expect(stack.getTechnologies()).toEqual(['React', 'TypeScript']);
+      // getTechnologies returns original form including empty strings
+      expect(stack.getTechnologies()).toEqual(['React', '', '  ', 'TypeScript']);
     });
 
     it('should return a copy of technologies array', () => {

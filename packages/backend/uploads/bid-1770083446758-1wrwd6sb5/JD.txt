@@ -1,0 +1,63 @@
+About us
+
+AgileEngine is an Inc. 5000 company that creates award-winning software for Fortune 500 brands and trailblazing startups across 17+ industries. We rank among the leaders in areas like application development and AI/ML, and our people-first culture has earned us multiple Best Place to Work awards.
+
+
+If you’re looking for a place to grow, make an impact, and work with people who care, we’d love to meet you!
+
+
+About the Role
+
+As a Senior/Lead Full-Stack Engineer, you will help build a financial intelligence platform designed for AI consumption, turning complex data into actionable insights. This is a full-time role starting with a focused 6-month project, offering strong autonomy and fast execution in a product-driven environment. You will act as a hands-on utility player, working across frontend, backend, integrations, and light architecture while shaping a cohesive, customer-ready system. Successful delivery opens the opportunity to continue on other impactful projects.
+
+
+What you will do 
+
+Own the implementation and integration of existing product components, including AI usage dashboards and advisor insights;
+Design and build backend functionality to support billing rules, chargeback logic, and ROI calculation for AI usage;
+Integrate external billing data sources, starting with Microsoft Azure billing systems;
+Build and evolve APIs and data pipelines that translate raw billing data into usable financial insights;
+Implement frontend functionality to surface metrics, dashboards, and data-heavy UI views clearly and pragmatically;
+Make sound architectural decisions at a medium level of complexity, prioritizing maintainability and speed;
+Collaborate closely with product stakeholders, operating with minimal process overhead;
+Ensure smooth deployment and delivery workflows using Vercel;
+Contribute to overall product cohesion by connecting disparate parts into a single, usable experience;
+Work full-time on a 6-month project, with the opportunity to continue on other projects afterward.
+
+
+Must haves
+
+4+ years of experience and strong full-stack background with proven ability to move across frontend, backend, and integrations;
+Solid experience with Python and Node.js in production environments;
+Experience designing and working with PostgreSQL schemas and data models;
+Direct experience integrating Azure billing systems or similar cloud cost and usage APIs;
+Experience building frontend applications deployed via Vercel (React or similar frameworks);
+Strong experience consuming and integrating third-party APIs, especially billing or usage-based systems;
+Demonstrated ability to work with incomplete requirements and turn them into working solutions;
+Comfortable operating in early-stage product environments with limited structure;
+Professional working proficiency in English;
+Experience integrating frontend tests into CI/CD pipelines (GitHub Actions or similar);
+Familiarity with observability and usage tracking concepts (e.g., OpenTelemetry or similar telemetry systems);
+Experience building or consuming SDKs.
+
+
+Nice to haves
+
+Experience with PHP;
+Experience building financial, billing, or cost-allocation systems;
+Familiarity with AI usage metrics, token-based billing, or ROI tracking models;
+Experience working on dashboards, tables, filters, and data-dense UI patterns;
+Prior startup or founder-led product experience;
+Exposure to AI tooling workflows (e.g., internal usage of Claude or similar tools).
+
+
+Perks and Benefits
+
+Professional growth
+Accelerate your professional journey with mentorship, TechTalks, and personalized growth roadmaps
+Competitive compensation
+We match your ever-growing skills, talent, and contributions with competitive USD-based compensation and budgets for education, fitness, and team activities
+A selection of exciting projects
+Join projects with modern solutions development and top-tier clients that include Fortune 500 enterprises and leading product brands
+Flextime
+Tailor your schedule for an optimal work-life balance, by having the options of working from home and going to the office – whatever makes you the happiest and most productive.

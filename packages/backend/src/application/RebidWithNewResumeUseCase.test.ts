@@ -7,6 +7,7 @@ import { Bid, BidStatus, BidOrigin, RejectionReason } from '../domain/Bid';
 describe('RebidWithNewResumeUseCase', () => {
   let useCase: RebidWithNewResumeUseCase;
   let mockBidRepository: jest.Mocked<IBidRepository>;
+  let mockInterviewRepository: jest.Mocked<any>;
   let duplicationPolicy: DuplicationDetectionPolicy;
   let companyHistory: CompanyHistory;
 
@@ -23,10 +24,15 @@ describe('RebidWithNewResumeUseCase', () => {
       delete: jest.fn(),
     };
 
+    mockInterviewRepository = {
+      findByBidId: jest.fn(),
+      findAll: jest.fn().mockResolvedValue([]),
+    };
+
     duplicationPolicy = new DuplicationDetectionPolicy();
     companyHistory = new CompanyHistory();
 
-    useCase = new RebidWithNewResumeUseCase(mockBidRepository, duplicationPolicy, companyHistory);
+    useCase = new RebidWithNewResumeUseCase(mockBidRepository, mockInterviewRepository, duplicationPolicy, companyHistory);
   });
 
   const createOriginalBid = (): Bid => {
@@ -46,7 +52,7 @@ describe('RebidWithNewResumeUseCase', () => {
     it('should allow rebid when original bid was rejected and interviewWinning is false', async () => {
       // Arrange
       const originalBid = createOriginalBid();
-      originalBid.markAsRejected(RejectionReason.NO_RESPONSE);
+      originalBid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       
       mockBidRepository.findById.mockResolvedValue(originalBid);
       mockBidRepository.findAll.mockResolvedValue([originalBid]);
@@ -78,7 +84,7 @@ describe('RebidWithNewResumeUseCase', () => {
     it('should use new job description when provided', async () => {
       // Arrange
       const originalBid = createOriginalBid();
-      originalBid.markAsRejected(RejectionReason.NO_RESPONSE);
+      originalBid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       
       mockBidRepository.findById.mockResolvedValue(originalBid);
       mockBidRepository.findAll.mockResolvedValue([originalBid]);
@@ -101,7 +107,7 @@ describe('RebidWithNewResumeUseCase', () => {
     it('should keep original job description when not provided', async () => {
       // Arrange
       const originalBid = createOriginalBid();
-      originalBid.markAsRejected(RejectionReason.NO_RESPONSE);
+      originalBid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       
       mockBidRepository.findById.mockResolvedValue(originalBid);
       mockBidRepository.findAll.mockResolvedValue([originalBid]);
@@ -141,7 +147,7 @@ describe('RebidWithNewResumeUseCase', () => {
       expect(response.allowed).toBe(false);
       expect(response.newBidId).toBe('');
       expect(response.reason).toContain('Cannot rebid');
-      expect(response.reason).toContain('interview stage');
+      expect(response.reason).toContain('non-rebiddable reason');
       expect(mockBidRepository.save).not.toHaveBeenCalled();
     });
 
@@ -187,7 +193,7 @@ describe('RebidWithNewResumeUseCase', () => {
     it('should attach company history warning when previous failures exist', async () => {
       // Arrange
       const originalBid = createOriginalBid();
-      originalBid.markAsRejected(RejectionReason.NO_RESPONSE);
+      originalBid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       
       mockBidRepository.findById.mockResolvedValue(originalBid);
       mockBidRepository.findAll.mockResolvedValue([originalBid]);
@@ -220,7 +226,7 @@ describe('RebidWithNewResumeUseCase', () => {
     it('should run duplication detection but still allow rebid', async () => {
       // Arrange
       const originalBid = createOriginalBid();
-      originalBid.markAsRejected(RejectionReason.NO_RESPONSE);
+      originalBid.markAsRejected(RejectionReason.UNSATISFIED_RESUME);
       
       const existingBid = Bid.create({
         link: originalBid.link,

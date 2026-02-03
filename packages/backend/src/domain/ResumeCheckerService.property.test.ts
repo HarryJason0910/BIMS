@@ -41,7 +41,7 @@ describe('ResumeCheckerService Property-Based Tests', () => {
     mainStacks: nonEmptyArrayArb,
     jobDescriptionPath: nonEmptyStringArb,
     resumePath: nonEmptyStringArb,
-    origin: fc.constantFrom(BidOrigin.BID, BidOrigin.REBID)
+    origin: fc.constantFrom(BidOrigin.BID, BidOrigin.BID)
   });
 
   describe('Property 12: Resume Checker Timing-Based Inference', () => {

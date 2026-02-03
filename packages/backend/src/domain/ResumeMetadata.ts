@@ -2,11 +2,11 @@
  * ResumeMetadata - Value object representing metadata about a saved resume
  * 
  * Represents information about a resume file including company, role, tech stack,
- * file path, and creation date. This is an immutable value object used for
- * resume selection and matching.
+ * file path, creation date, and associated JD specification ID.
+ * This is an immutable value object used for resume selection and matching.
  * 
- * Part of: resume-selection-from-history feature
- * Requirements: 1.1, 1.2
+ * Part of: resume-selection-from-history feature, enhanced-skill-matching feature
+ * Requirements: 1.1, 1.2, 13.1, 13.2
  */
 
 import { TechStackValue } from './TechStackValue';
@@ -18,7 +18,8 @@ export class ResumeMetadata {
     private readonly role: string,
     private readonly techStack: TechStackValue,
     private readonly filePath: string,
-    private readonly createdAt: Date
+    private readonly createdAt: Date,
+    private readonly jdSpecId?: string | null
   ) {}
 
   /**
@@ -67,5 +68,37 @@ export class ResumeMetadata {
    */
   getCreatedAt(): Date {
     return this.createdAt;
+  }
+
+  /**
+   * Get the JD specification ID associated with this resume
+   * @returns The JD spec ID, or null if not associated
+   */
+  getJDSpecId(): string | null {
+    return this.jdSpecId || null;
+  }
+
+  /**
+   * Serialize to JSON
+   * @returns JSON representation of the resume metadata
+   */
+  toJSON(): {
+    id: string;
+    company: string;
+    role: string;
+    techStack: string[];
+    filePath: string;
+    createdAt: string;
+    jdSpecId: string | null;
+  } {
+    return {
+      id: this.id,
+      company: this.company,
+      role: this.role,
+      techStack: this.techStack.getTechnologies(),
+      filePath: this.filePath,
+      createdAt: this.createdAt.toISOString(),
+      jdSpecId: this.jdSpecId || null
+    };
   }
 }

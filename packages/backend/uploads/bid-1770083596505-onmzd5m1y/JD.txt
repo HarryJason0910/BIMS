@@ -1,0 +1,66 @@
+## About the Product
+
+We’re building a high-throughput financial data and trading platform designed to operate at tick-level precision across multiple global exchanges. The system supports real-time analytics, trading workflows, and decision-making tools used by active market participants.
+
+The team operates in an engineering-led environment where performance, reliability, and scalability are core priorities.
+
+### The Role
+
+We’re looking for a backend engineer to help design and evolve the core services behind a real-time financial data and trading platform. This role centers on building low-latency services, scalable APIs, and fault-tolerant systems that ingest, process, and distribute live market data.
+
+You’ll collaborate closely with frontend engineers, data engineers, and product stakeholders to deliver backend systems that traders and analysts rely on daily. While the role operates at a senior level, strong mid-level engineers with relevant experience are encouraged to apply.
+
+This is a **fully remote position**, open to candidates across supported regions.
+
+### What You’ll Be Doing
+
+- Designing and building backend services optimized for real-time financial data
+    
+- Developing APIs and microservices with a focus on speed, resilience, and scalability
+    
+- Working directly with live market data, including feeds and trading-related events
+    
+- Improving system latency, throughput, and operational reliability
+    
+- Partnering with cross-functional teams to turn product requirements into technical solutions
+    
+- Taking ownership of backend services from design through production
+    
+
+### What We’re Looking For
+
+- Solid experience building backend systems (typically 7–10+ years, flexibility for strong profiles)
+    
+- **Direct experience with trading systems or stock market data** (market feeds, order flow, execution, etc.)
+    
+- Strong proficiency in **Go (Golang)** for real-time or performance-critical systems
+    
+- Exposure to **Rust** is a plus
+    
+- Familiarity with **Node.js / Nest.js** is helpful but not required
+    
+- Strong understanding of concurrency, distributed systems, and low-latency architecture
+    
+- Experience with relational and time-series databases (PostgreSQL, TimescaleDB, or similar)
+    
+- Knowledge of message queues, event-driven systems, and API design
+    
+- Comfortable working independently in a remote, fast-paced environment
+    
+- Startup-oriented mindset with a strong sense of ownership
+    
+
+### Nice to Have
+
+- Experience in fintech or financial infrastructure
+    
+- Previous senior or technical leadership responsibilities
+    
+- Hands-on experience scaling systems under production load
+    
+
+### Logistics
+
+- **Location:** Latin America or North America
+    
+- **Engagement:** Contract / Billable

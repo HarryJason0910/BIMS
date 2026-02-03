@@ -34,7 +34,8 @@ describe('BidList', () => {
     vi.mocked(apiModule.apiClient.getBids).mockImplementation(() => new Promise(() => {}));
 
     render(<BidList />, { wrapper: createWrapper() });
-    expect(screen.getByText(/loading bids/i)).toBeInTheDocument();
+    // Component shows CircularProgress without text, so check for progressbar role
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
   it('should render empty state when no bids', async () => {

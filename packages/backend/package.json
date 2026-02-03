@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix"
+    "lint:fix": "eslint src --ext .ts --fix",
+    "seed-dictionary": "tsx src/infrastructure/seed-dictionary.ts"
   },
   "dependencies": {
     "@types/multer": "^2.0.0",

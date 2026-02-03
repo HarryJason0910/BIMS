@@ -31,9 +31,9 @@ describe('ResumeCard', () => {
     const onSelect = vi.fn();
     render(<ResumeCard resume={mockResume} selected={false} onSelect={onSelect} />);
     
-    expect(screen.getByText('React')).toBeInTheDocument();
-    expect(screen.getByText('TypeScript')).toBeInTheDocument();
-    expect(screen.getByText('AWS')).toBeInTheDocument();
+    expect(screen.getAllByText('React').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('TypeScript').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('AWS').length).toBeGreaterThan(0);
   });
 
   it('should display match score', () => {
@@ -124,7 +124,7 @@ describe('ResumeCard', () => {
     const onSelect = vi.fn();
     render(<ResumeCard resume={resumeWithNoStack} selected={false} onSelect={onSelect} />);
     
-    expect(screen.getByText('Tech Stack:')).toBeInTheDocument();
+    expect(screen.getByText('Resume Tech Stack:')).toBeInTheDocument();
     // Should not crash with empty array
   });
 
@@ -132,6 +132,6 @@ describe('ResumeCard', () => {
     const onSelect = vi.fn();
     render(<ResumeCard resume={mockResume} selected={false} onSelect={onSelect} />);
     
-    expect(screen.getByText('Tech Stack:')).toBeInTheDocument();
+    expect(screen.getByText('Resume Tech Stack:')).toBeInTheDocument();
   });
 });

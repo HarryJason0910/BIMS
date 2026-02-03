@@ -7,8 +7,8 @@ import { ResumeMetadata } from '../domain/ResumeMetadata';
  * This interface abstracts file system operations for resume retrieval,
  * allowing the domain and application layers to remain infrastructure-independent.
  * 
- * Part of: resume-selection-from-history feature
- * Requirements: 1.1, 4.3
+ * Part of: resume-selection-from-history feature, enhanced-skill-matching feature
+ * Requirements: 1.1, 4.3, 13.1, 13.2
  */
 export interface IResumeRepository {
   /**
@@ -51,4 +51,17 @@ export interface IResumeRepository {
    * Requirements: 7.3, 7.4
    */
   fileExists(filePath: string): Promise<boolean>;
+
+  /**
+   * Find all resumes associated with a specific JD specification.
+   * 
+   * Retrieves all resumes that were created for a particular job description,
+   * enabling resume match rate calculation and historical analysis.
+   * 
+   * @param jdSpecId - The JD specification ID to search for
+   * @returns Promise resolving to array of ResumeMetadata objects
+   * 
+   * Requirements: 13.1, 13.2
+   */
+  findByJDSpecId(jdSpecId: string): Promise<ResumeMetadata[]>;
 }

@@ -3,22 +3,26 @@ import { DuplicationDetectionPolicy, DuplicationWarning } from '../domain/Duplic
 import { CompanyHistory } from '../domain/CompanyHistory';
 import { IBidRepository } from './IBidRepository';
 import { IResumeRepository } from './IResumeRepository';
+import { LayerWeights, LayerSkills, isValidLayerWeights } from '../domain/JDSpecTypes';
 
 /**
  * Request interface for creating a new bid
  */
 export interface CreateBidRequest {
+  id?: string; // Optional - if provided, will be used instead of auto-generating
   link: string;
   company: string;
   client: string;
   role: string;
-  mainStacks: string[];
+  mainStacks: string[] | LayerSkills; // Support both legacy (string[]) and new (LayerSkills) formats
+  layerWeights?: LayerWeights; // Optional - if not provided, will be derived from role
   jobDescriptionPath: string;
   resumePath?: string; // Optional when resumeId is provided
   resumeId?: string; // Optional - ID of selected resume from history
   origin: BidOrigin;
   recruiter?: string;
   resumeChecker?: ResumeCheckerType;
+  jdSpecId?: string; // Optional - JD specification ID for enhanced skill matching
 }
 
 /**
@@ -85,15 +89,18 @@ export class CreateBidUseCase {
 
     // 6. Create new Bid aggregate with today's date
     const bid = Bid.create({
+      id: request.id, // Pass the pre-generated ID if provided
       link: request.link,
       company: request.company,
       client: request.client,
       role: request.role,
       mainStacks: request.mainStacks,
+      layerWeights: request.layerWeights, // Pass layer weights (optional)
       jobDescriptionPath: request.jobDescriptionPath,
       resumePath: resumePath,
       origin: request.origin,
       recruiter: request.recruiter,
+      jdSpecId: request.jdSpecId, // Store JD spec ID for enhanced skill matching
     });
 
     // 6.1. Set resume checker if provided
@@ -144,9 +151,22 @@ export class CreateBidUseCase {
       throw new Error('Cannot provide both resumePath and resumeId');
     }
 
-    // Validate mainStacks is not empty array
-    if (Array.isArray(request.mainStacks) && request.mainStacks.length === 0) {
-      throw new Error('mainStacks cannot be empty');
+    // Validate mainStacks based on format
+    if (Array.isArray(request.mainStacks)) {
+      // Legacy format: string[]
+      if (request.mainStacks.length === 0) {
+        throw new Error('mainStacks cannot be empty');
+      }
+    } else {
+      // New format: LayerSkills - validate structure
+      this.validateLayerSkills(request.mainStacks);
+    }
+
+    // Validate layerWeights if provided
+    if (request.layerWeights) {
+      if (!isValidLayerWeights(request.layerWeights)) {
+        throw new Error('Layer weights must sum to 1.0 (±0.001 tolerance)');
+      }
     }
 
     // Validate string fields are not empty strings
@@ -171,6 +191,46 @@ export class CreateBidUseCase {
     // Validate recruiter is provided when origin is LINKEDIN
     if (request.origin === BidOrigin.LINKEDIN && (!request.recruiter || request.recruiter.trim() === '')) {
       throw new Error('Recruiter name is required when origin is LINKEDIN');
+    }
+  }
+
+  /**
+   * Validate LayerSkills structure
+   * - Must have all 6 required keys
+   * - Each key must map to an array of SkillWeight objects
+   * - Skill weights within each layer must sum to 1.0 (±0.001 tolerance) or layer is empty
+   */
+  private validateLayerSkills(layerSkills: LayerSkills): void {
+    const requiredLayers = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+    
+    // Check all required keys exist
+    for (const layer of requiredLayers) {
+      if (!(layer in layerSkills)) {
+        throw new Error(`LayerSkills must have '${layer}' key`);
+      }
+      
+      const skills = layerSkills[layer as keyof LayerSkills];
+      if (!Array.isArray(skills)) {
+        throw new Error(`LayerSkills['${layer}'] must be an array`);
+      }
+      
+      // Validate each skill has required properties
+      for (const skill of skills) {
+        if (typeof skill.skill !== 'string' || skill.skill.trim() === '') {
+          throw new Error(`Each skill in layer '${layer}' must have a non-empty 'skill' property`);
+        }
+        if (typeof skill.weight !== 'number' || skill.weight < 0 || skill.weight > 1) {
+          throw new Error(`Each skill in layer '${layer}' must have a 'weight' between 0 and 1`);
+        }
+      }
+      
+      // Validate weights sum to 1.0 (or layer is empty)
+      if (skills.length > 0) {
+        const sum = skills.reduce((acc, skill) => acc + skill.weight, 0);
+        if (Math.abs(sum - 1.0) > 0.001) {
+          throw new Error(`Skill weights in layer '${layer}' must sum to 1.0 (±0.001 tolerance), got ${sum}`);
+        }
+      }
     }
   }
 

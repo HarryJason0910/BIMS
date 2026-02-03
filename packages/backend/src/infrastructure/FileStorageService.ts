@@ -21,35 +21,18 @@ export class FileStorageService {
   }
 
   /**
-   * Sanitize folder name by removing invalid characters
+   * Get folder path using bid ID (much cleaner and avoids long path issues)
    */
-  private sanitizeFolderName(name: string): string {
-    return name.replace(/[<>:"/\\|?*]/g, '_').trim();
+  private getFolderPath(bidId: string): string {
+    return path.join(this.baseDir, bidId);
   }
 
   /**
-   * Get folder path for a company, role, and stacks
-   */
-  private getFolderPath(company: string, role: string, mainStacks?: string[]): string {
-    const sanitizedCompany = this.sanitizeFolderName(company);
-    const sanitizedRole = this.sanitizeFolderName(role);
-    
-    // Add stacks to folder name if provided
-    let folderName = `${sanitizedCompany}_${sanitizedRole}`;
-    if (mainStacks && mainStacks.length > 0) {
-      const stacksStr = mainStacks.map(s => this.sanitizeFolderName(s)).join('_');
-      folderName = `${sanitizedCompany}_${sanitizedRole}_${stacksStr}`;
-    }
-    
-    return path.join(this.baseDir, folderName);
-  }
-
-  /**
-   * Save resume PDF file
+   * Save resume PDF file using bid ID as folder name
    * Returns the absolute file path
    */
-  async saveResume(company: string, role: string, fileBuffer: Buffer, mainStacks?: string[]): Promise<string> {
-    const folderPath = this.getFolderPath(company, role, mainStacks);
+  async saveResume(bidId: string, fileBuffer: Buffer): Promise<string> {
+    const folderPath = this.getFolderPath(bidId);
     
     // Create folder if it doesn't exist
     if (!fs.existsSync(folderPath)) {
@@ -64,11 +47,11 @@ export class FileStorageService {
   }
 
   /**
-   * Save job description as text file
+   * Save job description as text file using bid ID as folder name
    * Returns the absolute file path
    */
-  async saveJobDescription(company: string, role: string, content: string, mainStacks?: string[]): Promise<string> {
-    const folderPath = this.getFolderPath(company, role, mainStacks);
+  async saveJobDescription(bidId: string, content: string): Promise<string> {
+    const folderPath = this.getFolderPath(bidId);
     
     // Create folder if it doesn't exist
     if (!fs.existsSync(folderPath)) {
@@ -111,10 +94,10 @@ export class FileStorageService {
   }
 
   /**
-   * Delete files for a company and role
+   * Delete files for a bid ID
    */
-  async deleteFiles(company: string, role: string): Promise<void> {
-    const folderPath = this.getFolderPath(company, role);
+  async deleteFiles(bidId: string): Promise<void> {
+    const folderPath = this.getFolderPath(bidId);
     if (fs.existsSync(folderPath)) {
       fs.rmSync(folderPath, { recursive: true, force: true });
     }
@@ -126,71 +109,5 @@ export class FileStorageService {
   fileExists(relativePath: string): boolean {
     const fullPath = path.join(this.baseDir, relativePath);
     return fs.existsSync(fullPath);
-  }
-
-  /**
-   * Find candidate resumes based on stack matching
-   * Returns list of resumes with matching stacks
-   */
-  async findCandidateResumes(targetStacks: string[]): Promise<Array<{
-    folderName: string;
-    resumePath: string;
-    matchingStacks: string[];
-    matchCount: number;
-  }>> {
-    const candidates: Array<{
-      folderName: string;
-      resumePath: string;
-      matchingStacks: string[];
-      matchCount: number;
-    }> = [];
-
-    if (!fs.existsSync(this.baseDir)) {
-      return candidates;
-    }
-
-    // Read all folders in base directory
-    const folders = fs.readdirSync(this.baseDir, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => dirent.name);
-
-    // Normalize target stacks for comparison
-    const normalizedTargetStacks = targetStacks.map(s => s.toLowerCase());
-
-    for (const folder of folders) {
-      // Extract stacks from folder name (format: Company_Role_Stack1_Stack2_...)
-      const parts = folder.split('_');
-      if (parts.length < 3) continue; // Need at least Company_Role_Stack
-
-      // Stacks are everything after company and role
-      const folderStacks = parts.slice(2).map(s => s.toLowerCase());
-      
-      // Find matching stacks
-      const matchingStacks = folderStacks.filter(stack => 
-        normalizedTargetStacks.some(targetStack => 
-          stack.includes(targetStack) || targetStack.includes(stack)
-        )
-      );
-
-      if (matchingStacks.length > 0) {
-        const resumePath = path.join(folder, 'resume.pdf');
-        const fullResumePath = path.join(this.baseDir, resumePath);
-        
-        // Only include if resume file exists
-        if (fs.existsSync(fullResumePath)) {
-          candidates.push({
-            folderName: folder,
-            resumePath,
-            matchingStacks,
-            matchCount: matchingStacks.length
-          });
-        }
-      }
-    }
-
-    // Sort by match count (descending)
-    candidates.sort((a, b) => b.matchCount - a.matchCount);
-
-    return candidates;
   }
 }

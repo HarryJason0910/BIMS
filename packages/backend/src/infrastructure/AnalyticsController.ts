@@ -173,7 +173,9 @@ export class AnalyticsController {
       const stackCounts: Record<string, { total: number; withInterview: number }> = {};
 
       bids.forEach(bid => {
-        bid.mainStacks.forEach(stack => {
+        // Extract skills from both legacy (string[]) and new (LayerSkills) formats
+        const skills = this.extractSkills(bid.mainStacks);
+        skills.forEach(stack => {
           if (!stackCounts[stack]) {
             stackCounts[stack] = { total: 0, withInterview: 0 };
           }
@@ -410,7 +412,10 @@ export class AnalyticsController {
 
       // Apply filters
       if (stack) {
-        bids = bids.filter(b => b.mainStacks.includes(stack as string));
+        bids = bids.filter(b => {
+          const skills = this.extractSkills(b.mainStacks);
+          return skills.includes(stack as string);
+        });
       }
       if (role) {
         bids = bids.filter(b => b.role.toLowerCase().includes((role as string).toLowerCase()));
@@ -545,6 +550,25 @@ export class AnalyticsController {
     } catch (error) {
       next(error);
     }
+  }
+
+  /**
+   * Helper method to extract skills from both legacy (string[]) and new (LayerSkills) formats
+   */
+  private extractSkills(mainStacks: string[] | any): string[] {
+    if (Array.isArray(mainStacks)) {
+      // Legacy format
+      return mainStacks;
+    }
+    
+    // New format (LayerSkills) - flatten all layers
+    const allSkills: string[] = [];
+    const layers = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+    for (const layer of layers) {
+      const layerSkills = mainStacks[layer] || [];
+      allSkills.push(...layerSkills.map((s: any) => s.skill));
+    }
+    return allSkills;
   }
 
   public getRouter(): Router {

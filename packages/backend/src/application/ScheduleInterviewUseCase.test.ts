@@ -4,7 +4,7 @@ import { IBidRepository } from './IBidRepository';
 import { InterviewEligibilityPolicy } from '../domain/InterviewEligibilityPolicy';
 import { CompanyHistory } from '../domain/CompanyHistory';
 import { Interview, InterviewBase, InterviewStatus, InterviewType } from '../domain/Interview';
-import { Bid, BidStatus, BidOrigin, RejectionReason } from '../domain/Bid';
+import { Bid, BidStatus, BidOrigin } from '../domain/Bid';
 
 describe('ScheduleInterviewUseCase', () => {
   let useCase: ScheduleInterviewUseCase;
@@ -66,6 +66,7 @@ describe('ScheduleInterviewUseCase', () => {
       // Arrange
       const bid = createValidBid();
       mockBidRepository.findById.mockResolvedValue(bid);
+      mockInterviewRepository.findByBidId.mockResolvedValue([]); // No existing interviews
 
       const request: ScheduleInterviewRequest = {
         base: InterviewBase.BID,
@@ -101,6 +102,7 @@ describe('ScheduleInterviewUseCase', () => {
       // Arrange
       const bid = createValidBid();
       mockBidRepository.findById.mockResolvedValue(bid);
+      mockInterviewRepository.findByBidId.mockResolvedValue([]); // No existing interviews
 
       const request: ScheduleInterviewRequest = {
         base: InterviewBase.BID,
@@ -130,6 +132,7 @@ describe('ScheduleInterviewUseCase', () => {
       // Arrange
       const bid = createValidBid();
       mockBidRepository.findById.mockResolvedValue(bid);
+      mockInterviewRepository.findByBidId.mockResolvedValue([]); // No existing interviews
 
       const request: ScheduleInterviewRequest = {
         base: InterviewBase.BID,
@@ -308,7 +311,7 @@ describe('ScheduleInterviewUseCase', () => {
       };
 
       // Act & Assert
-      await expect(useCase.execute(request)).rejects.toThrow('attendees is required');
+      await expect(useCase.execute(request)).rejects.toThrow('attendees are required for non-HR interviews');
     });
 
     it('should throw error when bidId is missing for BID base', async () => {

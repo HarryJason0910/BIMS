@@ -5,6 +5,9 @@
  * interview or rejection. This is a pure domain model with no infrastructure dependencies.
  */
 
+import { LayerWeights, LayerSkills, SkillWeight, TechLayer, isValidLayerWeights } from './JDSpecTypes';
+import { RoleService } from './RoleService';
+
 /**
  * Enum representing the status of a bid throughout its lifecycle
  */
@@ -46,16 +49,19 @@ export enum RejectionReason {
  * Data required to create a new Bid
  */
 export interface CreateBidData {
+  id?: string; // Optional - if not provided, will be auto-generated
   link: string;
   company: string;
   client: string;
   role: string;
-  mainStacks: string[];
+  mainStacks: string[] | LayerSkills; // Support both legacy (string[]) and new (LayerSkills) formats
+  layerWeights?: LayerWeights; // Optional - if not provided, will be derived from role
   jobDescriptionPath: string;
   resumePath: string;
   origin: BidOrigin;
   recruiter?: string; // Required when origin is LINKEDIN
   originalBidId?: string; // For rebids
+  jdSpecId?: string; // Optional - JD specification ID for enhanced skill matching
 }
 
 /**
@@ -65,6 +71,8 @@ export interface CreateBidData {
  * - Once interviewWinning is true, it cannot be set back to false
  * - Cannot transition to REJECTED after INTERVIEW_STAGE
  * - Required fields must not be empty
+ * - Layer weights must sum to 1.0 (±0.001 tolerance)
+ * - Skill weights within each layer must sum to 1.0 (±0.001 tolerance) or layer is empty
  */
 export class Bid {
   private constructor(
@@ -74,11 +82,13 @@ export class Bid {
     public readonly company: string,
     public readonly client: string,
     public readonly role: string,
-    public readonly mainStacks: string[],
+    public readonly mainStacks: string[] | LayerSkills, // Support both legacy and new formats
+    public readonly layerWeights: LayerWeights, // Layer weights for match rate calculation
     public readonly jobDescriptionPath: string,
     public readonly resumePath: string,
     public readonly origin: BidOrigin,
     public readonly recruiter: string | null,
+    public readonly jdSpecId: string | null,
     private _bidStatus: BidStatus,
     private _interviewWinning: boolean,
     private _bidDetail: string,
@@ -106,9 +116,21 @@ export class Bid {
     if (!data.role || data.role.trim() === '') {
       throw new Error('Bid role is required');
     }
-    if (!data.mainStacks || data.mainStacks.length === 0) {
+    if (!data.mainStacks) {
       throw new Error('Bid mainStacks is required');
     }
+    
+    // Validate mainStacks based on format
+    if (Array.isArray(data.mainStacks)) {
+      // Legacy format: string[]
+      if (data.mainStacks.length === 0) {
+        throw new Error('Bid mainStacks is required');
+      }
+    } else {
+      // New format: LayerSkills - validate structure
+      this.validateLayerSkills(data.mainStacks);
+    }
+    
     if (!data.jobDescriptionPath || data.jobDescriptionPath.trim() === '') {
       throw new Error('Bid jobDescriptionPath is required');
     }
@@ -123,8 +145,34 @@ export class Bid {
       throw new Error('Recruiter name is required when origin is LINKEDIN');
     }
 
-    // Generate unique ID (in production, this would use a proper ID generator)
-    const id = `bid-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    // Get or validate layer weights
+    let layerWeights: LayerWeights;
+    if (data.layerWeights) {
+      // User provided custom weights - validate them
+      if (!isValidLayerWeights(data.layerWeights)) {
+        throw new Error('Layer weights must sum to 1.0 (±0.001 tolerance)');
+      }
+      layerWeights = data.layerWeights;
+    } else {
+      // Get default weights from role
+      const roleService = new RoleService();
+      try {
+        layerWeights = roleService.getDefaultLayerWeights(data.role);
+      } catch (error) {
+        // If role is not recognized, use balanced weights
+        layerWeights = {
+          frontend: 0.25,
+          backend: 0.25,
+          database: 0.20,
+          cloud: 0.15,
+          devops: 0.10,
+          others: 0.05
+        };
+      }
+    }
+
+    // Generate unique ID (use provided ID or generate new one)
+    const id = data.id || `bid-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     
     // Set date to today
     const today = new Date();
@@ -138,10 +186,12 @@ export class Bid {
       data.client,
       data.role,
       data.mainStacks,
+      layerWeights,           // Layer weights
       data.jobDescriptionPath,
       data.resumePath,
       data.origin,
       data.recruiter || null,
+      data.jdSpecId || null,  // JD specification ID
       BidStatus.NEW,           // Default status
       false,                    // Default interviewWinning
       '',                       // Default bidDetail
@@ -150,6 +200,46 @@ export class Bid {
       data.originalBidId || null, // originalBidId
       false                     // Default hasBeenRebid
     );
+  }
+
+  /**
+   * Validate LayerSkills structure
+   * - Must have all 6 required keys
+   * - Each key must map to an array of SkillWeight objects
+   * - Skill weights within each layer must sum to 1.0 (±0.001 tolerance) or layer is empty
+   */
+  private static validateLayerSkills(layerSkills: LayerSkills): void {
+    const requiredLayers: TechLayer[] = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+    
+    // Check all required keys exist
+    for (const layer of requiredLayers) {
+      if (!(layer in layerSkills)) {
+        throw new Error(`LayerSkills must have '${layer}' key`);
+      }
+      
+      const skills = layerSkills[layer];
+      if (!Array.isArray(skills)) {
+        throw new Error(`LayerSkills['${layer}'] must be an array`);
+      }
+      
+      // Validate each skill has required properties
+      for (const skill of skills) {
+        if (typeof skill.skill !== 'string' || skill.skill.trim() === '') {
+          throw new Error(`Each skill in layer '${layer}' must have a non-empty 'skill' property`);
+        }
+        if (typeof skill.weight !== 'number' || skill.weight < 0 || skill.weight > 1) {
+          throw new Error(`Each skill in layer '${layer}' must have a 'weight' between 0 and 1`);
+        }
+      }
+      
+      // Validate weights sum to 1.0 (or layer is empty)
+      if (skills.length > 0) {
+        const sum = skills.reduce((acc, skill) => acc + skill.weight, 0);
+        if (Math.abs(sum - 1.0) > 0.001) {
+          throw new Error(`Skill weights in layer '${layer}' must sum to 1.0 (±0.001 tolerance), got ${sum}`);
+        }
+      }
+    }
   }
 
   // Getters for private fields
@@ -175,6 +265,83 @@ export class Bid {
 
   get hasBeenRebid(): boolean {
     return this._hasBeenRebid;
+  }
+
+  /**
+   * Get layer weights
+   */
+  getLayerWeights(): LayerWeights {
+    return this.layerWeights;
+  }
+
+  /**
+   * Get weight for a specific layer
+   */
+  getLayerWeight(layer: TechLayer): number {
+    return this.layerWeights[layer];
+  }
+
+  /**
+   * Get skills for a specific layer
+   * Returns empty array for legacy format or if layer doesn't exist
+   */
+  getSkillsForLayer(layer: TechLayer): SkillWeight[] {
+    if (Array.isArray(this.mainStacks)) {
+      // Legacy format - return empty array
+      return [];
+    }
+    return this.mainStacks[layer] || [];
+  }
+
+  /**
+   * Get all skills as flat array of skill names
+   * Works with both legacy (string[]) and new (LayerSkills) formats
+   */
+  getAllSkills(): string[] {
+    if (Array.isArray(this.mainStacks)) {
+      // Legacy format
+      return this.mainStacks;
+    }
+    
+    // New format - flatten all layers
+    const allSkills: string[] = [];
+    const layers: TechLayer[] = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+    for (const layer of layers) {
+      const layerSkills = this.mainStacks[layer] || [];
+      allSkills.push(...layerSkills.map(s => s.skill));
+    }
+    return allSkills;
+  }
+
+  /**
+   * Validate skill weights sum to 1.0 per layer
+   * Returns true if valid, false otherwise
+   * Always returns true for legacy format
+   */
+  validateSkillWeights(): boolean {
+    if (Array.isArray(this.mainStacks)) {
+      // Legacy format - always valid
+      return true;
+    }
+    
+    const layers: TechLayer[] = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+    for (const layer of layers) {
+      const skills = this.mainStacks[layer] || [];
+      if (skills.length > 0) {
+        const sum = skills.reduce((acc, skill) => acc + skill.weight, 0);
+        if (Math.abs(sum - 1.0) > 0.001) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Check if this bid uses the new LayerSkills format
+   */
+  isLayerSkillsFormat(): boolean {
+    return !Array.isArray(this.mainStacks);
   }
 
   /**
@@ -334,10 +501,12 @@ export class Bid {
       client: this.client,
       role: this.role,
       mainStacks: this.mainStacks,
+      layerWeights: this.layerWeights,
       jobDescriptionPath: this.jobDescriptionPath,
       resumePath: this.resumePath,
       origin: this.origin,
       recruiter: this.recruiter,
+      jdSpecId: this.jdSpecId,
       bidStatus: this._bidStatus,
       interviewWinning: this._interviewWinning,
       bidDetail: this._bidDetail,

@@ -12,6 +12,16 @@ import { FileSystemResumeRepository } from './FileSystemResumeRepository';
 import { IBidRepository } from '../application/IBidRepository';
 import { Bid, BidOrigin } from '../domain/Bid';
 import * as path from 'path';
+import { promises as fs } from 'fs';
+
+// Mock the fs module
+jest.mock('fs', () => ({
+  promises: {
+    stat: jest.fn(),
+    access: jest.fn(),
+    readFile: jest.fn(),
+  }
+}));
 
 describe('FileSystemResumeRepository', () => {
   const uploadDirectory = path.join(__dirname, '../../uploads');
@@ -32,6 +42,9 @@ describe('FileSystemResumeRepository', () => {
     } as jest.Mocked<IBidRepository>;
 
     repository = new FileSystemResumeRepository(uploadDirectory, mockBidRepository);
+
+    // Reset all mocks before each test
+    jest.clearAllMocks();
   });
 
   describe('getAllResumeMetadata', () => {
@@ -61,6 +74,14 @@ describe('FileSystemResumeRepository', () => {
       ];
 
       mockBidRepository.findAll.mockResolvedValue(mockBids);
+
+      // Mock fs.access to simulate files exist
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock fs.stat to return file stats
+      (fs.stat as jest.Mock).mockResolvedValue({
+        birthtime: new Date('2024-01-01'),
+      });
 
       const metadata = await repository.getAllResumeMetadata();
 
@@ -98,6 +119,14 @@ describe('FileSystemResumeRepository', () => {
 
       mockBidRepository.findAll.mockResolvedValue(mockBids);
 
+      // Mock fs.access to simulate file exists
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock fs.stat to return file stats
+      (fs.stat as jest.Mock).mockResolvedValue({
+        birthtime: new Date('2024-01-01'),
+      });
+
       const metadata = await repository.getAllResumeMetadata();
 
       // Find the Alpaca resume
@@ -128,6 +157,9 @@ describe('FileSystemResumeRepository', () => {
       ];
 
       mockBidRepository.findAll.mockResolvedValue(mockBids);
+
+      // Mock fs.access to simulate file doesn't exist
+      (fs.access as jest.Mock).mockRejectedValue(new Error('File not found'));
 
       const metadata = await repository.getAllResumeMetadata();
 
@@ -162,12 +194,24 @@ describe('FileSystemResumeRepository', () => {
 
       mockBidRepository.findAll.mockResolvedValue(mockBids);
 
+      // Mock fs.access to simulate file exists
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock fs.stat to return file stats
+      (fs.stat as jest.Mock).mockResolvedValue({
+        birthtime: new Date('2024-01-01'),
+      });
+
       // First get metadata to get a valid resume ID
       const metadata = await repository.getAllResumeMetadata();
       expect(metadata.length).toBeGreaterThan(0);
 
       const firstResume = metadata[0];
       const resumeId = firstResume.getId();
+
+      // Mock fs.readFile to return PDF content
+      const mockPdfContent = Buffer.from('%PDF-1.4\nMock PDF content');
+      (fs.readFile as jest.Mock).mockResolvedValue(mockPdfContent);
 
       // Retrieve the file
       const fileBuffer = await repository.getResumeFile(resumeId);
@@ -183,6 +227,9 @@ describe('FileSystemResumeRepository', () => {
 
     it('should throw error for invalid resume ID', async () => {
       const invalidId = Buffer.from('/invalid/path/resume.pdf').toString('base64');
+
+      // Mock fs.readFile to throw error
+      (fs.readFile as jest.Mock).mockRejectedValue(new Error('File not found'));
 
       await expect(repository.getResumeFile(invalidId)).rejects.toThrow();
     });
@@ -205,6 +252,14 @@ describe('FileSystemResumeRepository', () => {
 
       mockBidRepository.findAll.mockResolvedValue(mockBids);
 
+      // Mock fs.access to simulate file exists
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock fs.stat to return file stats
+      (fs.stat as jest.Mock).mockResolvedValue({
+        birthtime: new Date('2024-01-01'),
+      });
+
       const metadata = await repository.getAllResumeMetadata();
       expect(metadata.length).toBeGreaterThan(0);
 
@@ -215,6 +270,9 @@ describe('FileSystemResumeRepository', () => {
     });
 
     it('should return false for non-existent files', async () => {
+      // Mock fs.access to simulate file doesn't exist
+      (fs.access as jest.Mock).mockRejectedValue(new Error('File not found'));
+
       const exists = await repository.fileExists('/non/existent/file.pdf');
 
       expect(exists).toBe(false);
@@ -237,6 +295,14 @@ describe('FileSystemResumeRepository', () => {
       ];
 
       mockBidRepository.findAll.mockResolvedValue(mockBids);
+
+      // Mock fs.access to simulate file exists
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock fs.stat to return file stats
+      (fs.stat as jest.Mock).mockResolvedValue({
+        birthtime: new Date('2024-01-01'),
+      });
 
       const metadata = await repository.getAllResumeMetadata();
       expect(metadata.length).toBeGreaterThan(0);
@@ -276,6 +342,14 @@ describe('FileSystemResumeRepository', () => {
       ];
 
       mockBidRepository.findAll.mockResolvedValue(mockBids);
+
+      // Mock fs.access to simulate files exist
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock fs.stat to return file stats
+      (fs.stat as jest.Mock).mockResolvedValue({
+        birthtime: new Date('2024-01-01'),
+      });
 
       const metadata = await repository.getAllResumeMetadata();
       

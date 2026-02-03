@@ -5,6 +5,11 @@ import { Layout } from './components/Layout';
 import { BidDashboard } from './pages/BidDashboard';
 import { InterviewDashboard } from './pages/InterviewDashboard';
 import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
+import { JDSpecificationPage } from './pages/JDSpecificationPage';
+import { SkillDictionaryPage } from './pages/SkillDictionaryPage';
+import { SkillReviewPage } from './pages/SkillReviewPage';
+import { SkillStatisticsPage } from './pages/SkillStatisticsPage';
+import { UserGuidePage } from './pages/UserGuidePage';
 import { apiClient } from './api';
 
 const theme = createTheme({
@@ -46,6 +51,11 @@ function App() {
             <Route path="/bids" element={<BidDashboard />} />
             <Route path="/interviews" element={<InterviewDashboard />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/jd-specifications" element={<JDSpecificationPage />} />
+            <Route path="/skill-dictionary" element={<SkillDictionaryPage />} />
+            <Route path="/skill-review" element={<SkillReviewPage />} />
+            <Route path="/skill-statistics" element={<SkillStatisticsPage />} />
+            <Route path="/user-guide" element={<UserGuidePage />} />
           </Routes>
         </Layout>
       </Router>

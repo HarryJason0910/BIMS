@@ -38,13 +38,14 @@ export class InMemoryBidRepository implements IBidRepository {
       }
       if (filters.mainStacks && filters.mainStacks.length > 0) {
         // Filter: bid must include ALL specified stacks
-        results = results.filter(bid => 
-          filters.mainStacks!.every(stack => 
-            bid.mainStacks.some(bidStack => 
+        results = results.filter(bid => {
+          const bidSkills = this.extractSkills(bid.mainStacks);
+          return filters.mainStacks!.every(stack => 
+            bidSkills.some(bidStack => 
               bidStack.toLowerCase() === stack.toLowerCase()
             )
-          )
-        );
+          );
+        });
       }
     }
 
@@ -127,6 +128,25 @@ export class InMemoryBidRepository implements IBidRepository {
       pageSize,
       totalPages: Math.ceil(allResults.length / pageSize)
     };
+  }
+
+  /**
+   * Helper method to extract skills from both legacy (string[]) and new (LayerSkills) formats
+   */
+  private extractSkills(mainStacks: string[] | any): string[] {
+    if (Array.isArray(mainStacks)) {
+      // Legacy format
+      return mainStacks;
+    }
+    
+    // New format (LayerSkills) - flatten all layers
+    const allSkills: string[] = [];
+    const layers = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+    for (const layer of layers) {
+      const layerSkills = mainStacks[layer] || [];
+      allSkills.push(...layerSkills.map((s: any) => s.skill));
+    }
+    return allSkills;
   }
 
   // Helper method for testing

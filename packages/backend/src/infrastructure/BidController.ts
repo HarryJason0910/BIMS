@@ -27,7 +27,6 @@ export class BidController {
     this.router.get('/:id', this.getBidById.bind(this));
     this.router.get('/:id/resume', this.downloadResume.bind(this));
     this.router.get('/:id/jd', this.downloadJobDescription.bind(this));
-    this.router.get('/:id/candidate-resumes', this.getCandidateResumes.bind(this));
     this.router.post('/:id/rebid', this.upload.single('resume'), this.rebid.bind(this));
     this.router.post('/:id/reject', this.markRejected.bind(this));
     this.router.post('/:id/restore', this.restoreBid.bind(this));
@@ -39,7 +38,7 @@ export class BidController {
   private async createBid(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // Validate required fields
-      const { link, company, client, role, mainStacks, jobDescription, origin, recruiter, resumeChecker, resumeId } = req.body;
+      const { link, company, client, role, mainStacks, layerWeights, jobDescription, origin, recruiter, resumeChecker, resumeId, jdSpecId } = req.body;
       const resumeFile = req.file;
 
       // Either resumeFile or resumeId must be provided
@@ -60,7 +59,7 @@ export class BidController {
         return;
       }
 
-      // Parse mainStacks if it's a string
+      // Parse mainStacks if it's a string (supports both legacy array and new object format)
       let parsedMainStacks = mainStacks;
       if (typeof mainStacks === 'string') {
         try {
@@ -68,25 +67,115 @@ export class BidController {
         } catch (e) {
           res.status(400).json({
             error: 'Validation Error',
-            message: 'mainStacks must be a valid JSON array',
+            message: 'mainStacks must be a valid JSON (array or object with layer keys)',
           });
           return;
         }
       }
 
-      if (!Array.isArray(parsedMainStacks)) {
+      // Validate mainStacks format
+      if (Array.isArray(parsedMainStacks)) {
+        // Legacy format: string[]
+        if (parsedMainStacks.length === 0) {
+          res.status(400).json({
+            error: 'Validation Error',
+            message: 'mainStacks array cannot be empty',
+          });
+          return;
+        }
+      } else if (typeof parsedMainStacks === 'object' && parsedMainStacks !== null) {
+        // New format: LayerSkills - validate structure
+        const requiredLayers = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+        for (const layer of requiredLayers) {
+          if (!(layer in parsedMainStacks)) {
+            res.status(400).json({
+              error: 'Validation Error',
+              message: `mainStacks object must have '${layer}' key`,
+            });
+            return;
+          }
+          if (!Array.isArray(parsedMainStacks[layer])) {
+            res.status(400).json({
+              error: 'Validation Error',
+              message: `mainStacks['${layer}'] must be an array`,
+            });
+            return;
+          }
+          // Validate each skill has required properties
+          for (const skill of parsedMainStacks[layer]) {
+            if (typeof skill.skill !== 'string' || skill.skill.trim() === '') {
+              res.status(400).json({
+                error: 'Validation Error',
+                message: `Each skill in layer '${layer}' must have a non-empty 'skill' property`,
+              });
+              return;
+            }
+            if (typeof skill.weight !== 'number' || skill.weight < 0 || skill.weight > 1) {
+              res.status(400).json({
+                error: 'Validation Error',
+                message: `Each skill in layer '${layer}' must have a 'weight' between 0 and 1`,
+              });
+              return;
+            }
+          }
+          // Validate weights sum to 1.0 (or layer is empty)
+          if (parsedMainStacks[layer].length > 0) {
+            const sum = parsedMainStacks[layer].reduce((acc: number, skill: any) => acc + skill.weight, 0);
+            if (Math.abs(sum - 1.0) > 0.001) {
+              res.status(400).json({
+                error: 'Validation Error',
+                message: `Skill weights in layer '${layer}' must sum to 1.0 (±0.001 tolerance), got ${sum}`,
+              });
+              return;
+            }
+          }
+        }
+      } else {
         res.status(400).json({
           error: 'Validation Error',
-          message: 'mainStacks must be an array',
+          message: 'mainStacks must be an array or object with layer keys',
         });
         return;
       }
 
+      // Parse and validate layerWeights if provided
+      let parsedLayerWeights = undefined;
+      if (layerWeights) {
+        if (typeof layerWeights === 'string') {
+          try {
+            parsedLayerWeights = JSON.parse(layerWeights);
+          } catch (e) {
+            res.status(400).json({
+              error: 'Validation Error',
+              message: 'layerWeights must be a valid JSON object',
+            });
+            return;
+          }
+        } else {
+          parsedLayerWeights = layerWeights;
+        }
+
+        // Validate layerWeights sum to 1.0
+        const sum = parsedLayerWeights.frontend + parsedLayerWeights.backend + 
+                    parsedLayerWeights.database + parsedLayerWeights.cloud + 
+                    parsedLayerWeights.devops + parsedLayerWeights.others;
+        if (Math.abs(sum - 1.0) > 0.001) {
+          res.status(400).json({
+            error: 'Validation Error',
+            message: `Layer weights must sum to 1.0 (±0.001 tolerance), got ${sum}`,
+          });
+          return;
+        }
+      }
+
+      // Generate bid ID first (same logic as Bid.create)
+      const bidId = `bid-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
       // Handle resume: either save uploaded file or use existing resume
       let resumePath: string;
       if (resumeFile) {
-        // Save uploaded resume
-        resumePath = await this.fileStorageService.saveResume(company, role, resumeFile.buffer, parsedMainStacks);
+        // Save uploaded resume using bid ID as folder name
+        resumePath = await this.fileStorageService.saveResume(bidId, resumeFile.buffer);
       } else if (resumeId) {
         // Use existing resume - decode the base64 ID to get the file path
         try {
@@ -110,20 +199,23 @@ export class BidController {
         return;
       }
 
-      // Save job description
-      const jdPath = await this.fileStorageService.saveJobDescription(company, role, jobDescription, parsedMainStacks);
+      // Save job description using bid ID as folder name
+      const jdPath = await this.fileStorageService.saveJobDescription(bidId, jobDescription);
 
       const result = await this.createBidUseCase.execute({
+        id: bidId, // Pass the pre-generated ID
         link,
         company,
         client,
         role,
         mainStacks: parsedMainStacks,
+        layerWeights: parsedLayerWeights, // Pass layer weights (optional)
         jobDescriptionPath: jdPath,
         resumePath: resumePath,
         origin: origin as BidOrigin,
         recruiter: origin === 'LINKEDIN' ? recruiter : undefined,
         resumeChecker: resumeChecker || undefined,
+        jdSpecId: jdSpecId || undefined, // Pass JD spec ID for enhanced skill matching
       });
 
       res.status(201).json(result);
@@ -187,6 +279,7 @@ export class BidController {
           resumePath: bid.resumePath,
           origin: bid.origin,
           recruiter: bid.recruiter,
+          jdSpecId: bid.jdSpecId,
           status: bid.bidStatus,
           interviewWinning: bid.interviewWinning,
           bidDetail: bid.bidDetail,
@@ -220,6 +313,7 @@ export class BidController {
           resumePath: bid.resumePath,
           origin: bid.origin,
           recruiter: bid.recruiter,
+          jdSpecId: bid.jdSpecId,
           status: bid.bidStatus,  // Map bidStatus to status for frontend
           interviewWinning: bid.interviewWinning,
           bidDetail: bid.bidDetail,
@@ -262,6 +356,7 @@ export class BidController {
         resumePath: bid.resumePath,
         origin: bid.origin,
         recruiter: bid.recruiter,
+        jdSpecId: bid.jdSpecId,
         status: bid.bidStatus,  // Map bidStatus to status for frontend
         interviewWinning: bid.interviewWinning,
         bidDetail: bid.bidDetail,
@@ -291,7 +386,7 @@ export class BidController {
         return;
       }
 
-      // Get original bid to get company and role
+      // Get original bid
       const originalBid = await this.bidRepository.findById(id);
       if (!originalBid) {
         res.status(404).json({
@@ -301,23 +396,16 @@ export class BidController {
         return;
       }
 
-      // Save new resume file
-      const resumePath = await this.fileStorageService.saveResume(
-        originalBid.company, 
-        originalBid.role, 
-        resumeFile.buffer,
-        originalBid.mainStacks
-      );
+      // Generate new bid ID for the rebid
+      const newBidId = `bid-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
+      // Save new resume file using new bid ID
+      const resumePath = await this.fileStorageService.saveResume(newBidId, resumeFile.buffer);
 
       // Save new JD if provided, otherwise use original
       let jdPath = originalBid.jobDescriptionPath;
       if (newJobDescription) {
-        jdPath = await this.fileStorageService.saveJobDescription(
-          originalBid.company, 
-          originalBid.role, 
-          newJobDescription,
-          originalBid.mainStacks
-        );
+        jdPath = await this.fileStorageService.saveJobDescription(newBidId, newJobDescription);
       }
 
       const result = await this.rebidUseCase.execute({
@@ -470,7 +558,7 @@ export class BidController {
     }
   }
 
-  private async autoRejectOldBids(req: Request, res: Response, next: NextFunction): Promise<void> {
+  private async autoRejectOldBids(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const bids = await this.bidRepository.findAll();
       const rejectedBids: string[] = [];
@@ -508,37 +596,6 @@ export class BidController {
 
       await this.bidRepository.delete(id);
       res.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  private async getCandidateResumes(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { id } = req.params;
-      const bid = await this.bidRepository.findById(id);
-
-      if (!bid) {
-        res.status(404).json({
-          error: 'Not Found',
-          message: `Bid with id ${id} not found`,
-        });
-        return;
-      }
-
-      // Find candidate resumes based on mainStacks
-      const candidates = await this.fileStorageService.findCandidateResumes(bid.mainStacks);
-
-      res.json({
-        bidId: id,
-        targetStacks: bid.mainStacks,
-        candidates: candidates.map(c => ({
-          folderName: c.folderName,
-          resumePath: c.resumePath,
-          matchingStacks: c.matchingStacks,
-          matchCount: c.matchCount
-        }))
-      });
     } catch (error) {
       next(error);
     }

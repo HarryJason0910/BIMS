@@ -1,0 +1,66 @@
+About the job
+About the Company:
+
+Our Client is a technology solutions company specializing in custom web development, ERP integrations, and high-end eCommerce systems. They focus on building backend-driven systems and tailor-made digital solutions that help businesses streamline operations and scale efficiently across global markets.
+
+
+Job Description:
+
+Our Client is seeking a skilled WordPress Specialist to join their team. The ideal candidate will have a strong background in WordPress development, including theme and plugin customization, as well as experience with optimizing website performance and security.
+
+
+Responsibilities:
+
+• Develop and customize WordPress themes and plugins.
+• Ensure high performance and availability of WordPress sites.
+• Collaborate with design and development teams to implement client requirements.
+• Troubleshoot and resolve website issues and bugs.
+• Optimize website performance and enhance security measures.
+• Stay up-to-date with emerging trends and technologies in WordPress.
+
+
+Required Experience and Qualifications:
+
+• Proven experience working with WordPress development.
+• Strong understanding of PHP, HTML, CSS, and JavaScript.
+• Experience with theme and plugin customization.
+• Familiarity with website performance optimization techniques.
+• Knowledge of security best practices for WordPress sites.
+
+
+Preferred Skills:
+
+• Experience with WooCommerce or other eCommerce platforms.
+• Familiarity with RESTful APIs and third-party integrations.
+• Strong problem-solving and analytical skills.
+
+
+Personality:
+
+• Detail-oriented and highly organized.
+• Strong communication and teamwork skills.
+• Ability to work independently and manage time effectively.
+
+
+Software & Tools:
+
+• WordPress
+• PHP
+• HTML/CSS/JavaScript
+• WooCommerce (preferred)
+• RESTful APIs (preferred)
+
+
+English Level:
+
+C2, C1, Native
+
+
+Schedule:
+
+Flexible
+
+
+Salary and Benefits:
+
+Payment in USD or Local Currency according to candidate's preference.

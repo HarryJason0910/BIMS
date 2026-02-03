@@ -29,6 +29,23 @@ import { IInterviewRepository } from '../application/IInterviewRepository';
 import { ICompanyHistoryRepository } from '../application/ICompanyHistoryRepository';
 import { IResumeRepository } from '../application/IResumeRepository';
 import { FileSystemResumeRepository } from './FileSystemResumeRepository';
+import { IJDSpecRepository } from '../application/IJDSpecRepository';
+import { ISkillDictionaryRepository } from '../application/ISkillDictionaryRepository';
+import { ISkillReviewQueueRepository } from '../application/ISkillReviewQueueRepository';
+import { MongoDBJDSpecRepository } from './MongoDBJDSpecRepository';
+import { MongoDBSkillDictionaryRepository } from './MongoDBSkillDictionaryRepository';
+import { MongoDBSkillReviewQueueRepository } from './MongoDBSkillReviewQueueRepository';
+import { CreateJDSpecUseCase } from '../application/CreateJDSpecUseCase';
+import { CalculateCorrelationUseCase } from '../application/CalculateCorrelationUseCase';
+import { CalculateResumeMatchRateUseCase } from '../application/CalculateResumeMatchRateUseCase';
+import { ManageSkillDictionaryUseCase } from '../application/ManageSkillDictionaryUseCase';
+import { ReviewUnknownSkillsUseCase } from '../application/ReviewUnknownSkillsUseCase';
+import { ExportDictionaryUseCase } from '../application/ExportDictionaryUseCase';
+import { ImportDictionaryUseCase } from '../application/ImportDictionaryUseCase';
+import { SkillUsageStatisticsUseCase } from '../application/SkillUsageStatisticsUseCase';
+import { CalculateBidMatchRateUseCase } from '../application/CalculateBidMatchRateUseCase';
+import { JDCorrelationCalculator } from '../domain/JDCorrelationCalculator';
+import { WeightedMatchRateCalculator } from '../domain/WeightedMatchRateCalculator';
 
 export interface ContainerConfig {
   useInMemory?: boolean;
@@ -44,6 +61,9 @@ export class Container {
   public interviewRepository!: IInterviewRepository;
   public companyHistoryRepository!: ICompanyHistoryRepository;
   public resumeRepository!: IResumeRepository;
+  public jdSpecRepository!: IJDSpecRepository;
+  public skillDictionaryRepository!: ISkillDictionaryRepository;
+  public skillReviewQueueRepository!: ISkillReviewQueueRepository;
 
   // Domain Services
   public duplicationDetectionPolicy!: DuplicationDetectionPolicy;
@@ -51,6 +71,8 @@ export class Container {
   public resumeCheckerService!: ResumeCheckerService;
   public fileStorageService!: FileStorageService;
   public stackMatchCalculator!: StackMatchCalculator;
+  public jdCorrelationCalculator!: JDCorrelationCalculator;
+  public weightedMatchRateCalculator!: WeightedMatchRateCalculator;
 
   // Use Cases
   public createBidUseCase!: CreateBidUseCase;
@@ -60,6 +82,15 @@ export class Container {
   public cancelInterviewUseCase!: CancelInterviewUseCase;
   public getMatchingResumesUseCase!: GetMatchingResumesUseCase;
   public getResumeFileUseCase!: GetResumeFileUseCase;
+  public createJDSpecUseCase!: CreateJDSpecUseCase;
+  public calculateCorrelationUseCase!: CalculateCorrelationUseCase;
+  public calculateResumeMatchRateUseCase!: CalculateResumeMatchRateUseCase;
+  public calculateBidMatchRateUseCase!: CalculateBidMatchRateUseCase;
+  public manageSkillDictionaryUseCase!: ManageSkillDictionaryUseCase;
+  public reviewUnknownSkillsUseCase!: ReviewUnknownSkillsUseCase;
+  public exportDictionaryUseCase!: ExportDictionaryUseCase;
+  public importDictionaryUseCase!: ImportDictionaryUseCase;
+  public skillUsageStatisticsUseCase!: SkillUsageStatisticsUseCase;
 
   private constructor() {}
 
@@ -79,6 +110,9 @@ export class Container {
       this.bidRepository = new InMemoryBidRepository();
       this.interviewRepository = new InMemoryInterviewRepository();
       this.companyHistoryRepository = new InMemoryCompanyHistoryRepository();
+      // Note: Enhanced skill matching repositories don't have in-memory implementations yet
+      // They will need MongoDB for now
+      throw new Error('In-memory mode not yet supported for enhanced skill matching features. Please use MongoDB.');
     } else {
       console.log('Using MongoDB repositories');
       if (!config.mongoUri || !config.mongoDbName) {
@@ -94,6 +128,9 @@ export class Container {
       this.bidRepository = new MongoDBBidRepository();
       this.interviewRepository = new MongoDBInterviewRepository();
       this.companyHistoryRepository = new MongoDBCompanyHistoryRepository();
+      this.jdSpecRepository = new MongoDBJDSpecRepository();
+      this.skillDictionaryRepository = new MongoDBSkillDictionaryRepository();
+      this.skillReviewQueueRepository = new MongoDBSkillReviewQueueRepository();
     }
 
     // Initialize domain services
@@ -102,6 +139,8 @@ export class Container {
     this.resumeCheckerService = new ResumeCheckerService();
     this.fileStorageService = new FileStorageService('./uploads');
     this.stackMatchCalculator = new StackMatchCalculator();
+    this.jdCorrelationCalculator = new JDCorrelationCalculator();
+    this.weightedMatchRateCalculator = new WeightedMatchRateCalculator();
 
     // Initialize resume repository (always uses file system, but gets metadata from bids)
     this.resumeRepository = new FileSystemResumeRepository('./uploads', this.bidRepository);
@@ -151,6 +190,50 @@ export class Container {
 
     this.getResumeFileUseCase = new GetResumeFileUseCase(
       this.resumeRepository
+    );
+
+    // Enhanced skill matching use cases
+    this.createJDSpecUseCase = new CreateJDSpecUseCase(
+      this.jdSpecRepository,
+      this.skillDictionaryRepository,
+      this.skillReviewQueueRepository
+    );
+
+    this.calculateCorrelationUseCase = new CalculateCorrelationUseCase(
+      this.jdSpecRepository
+    );
+
+    this.calculateResumeMatchRateUseCase = new CalculateResumeMatchRateUseCase(
+      this.jdSpecRepository,
+      this.resumeRepository
+    );
+
+    this.calculateBidMatchRateUseCase = new CalculateBidMatchRateUseCase(
+      this.bidRepository,
+      this.weightedMatchRateCalculator
+    );
+
+    this.manageSkillDictionaryUseCase = new ManageSkillDictionaryUseCase(
+      this.skillDictionaryRepository
+    );
+
+    this.reviewUnknownSkillsUseCase = new ReviewUnknownSkillsUseCase(
+      this.skillReviewQueueRepository,
+      this.skillDictionaryRepository
+    );
+
+    this.exportDictionaryUseCase = new ExportDictionaryUseCase(
+      this.skillDictionaryRepository
+    );
+
+    this.importDictionaryUseCase = new ImportDictionaryUseCase(
+      this.skillDictionaryRepository
+    );
+
+    this.skillUsageStatisticsUseCase = new SkillUsageStatisticsUseCase(
+      this.jdSpecRepository,
+      this.resumeRepository,
+      this.skillDictionaryRepository
     );
 
     console.log('Container initialized successfully');

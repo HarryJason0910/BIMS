@@ -1,0 +1,83 @@
+About the role
+
+Our client is a US-based technology company focused on driving the next generation of vehicle and mobile technologies.
+
+For them, we’re looking for a Principal Software Engineer.
+
+What You’ll Do
+
+Design, develop, and maintain logical designs of mission-critical enterprise application systems and services that leverage RESTful services and serverless architecture. 
+
+Ensure that application and service designs align with our client's strategic technology direction and mission. 
+
+Recommend strategies to improve system applications and services with a focus on ease of deployment, security, reliability, stability, availability, and performance. These include:
+
+Independently analyze and resolve production problems, assessing risk and alternatives as appropriate, and implementing pragmatic roadmaps that lead to durable solutions.
+
+Evaluate and interpret requirements to design, develop, and implement appropriate capabilities.
+
+Perform code reviews, identifying potential issues to reduce technical debt, and providing coding best practice recommendations.
+
+Take ownership of tasks and deliver with limited supervision, while using your own discretion to seek help when necessary.
+
+Inspire and mentor your engineering colleagues – especially junior engineers in your charge.
+
+Continually champion improvement by identifying ways to raise the quality bar of the team, systems, and organization around you.
+
+Key Outcomes
+
+Deliver products/systems through their full life cycle, from idea conception, technical planning, implementation, launch, measurement, and maintenance/iteration.
+
+Contribute to developing a strong culture of quality, availability, and security through attention to detail and by supporting industry-leading best practices.
+
+Drive optimal solution design, collaborating with product owners, architects, operations, client services, and cross-functional teams to move fast on creating solutions to client and business problems, as well as identifying and acting on new opportunities.
+
+What We’re Looking For
+
+Must-Have Experience
+
+BS degree in CS, Engineering, Mathematics or equivalent practical experience
+
+Experience building large, complex systems, particularly web services, RESTful APIs, and continuous integration and delivery.
+
+10+ years of software application development and design experience.
+
+Proficient in Python, JavaScript, HTML, and CSS,
+
+C#/Java Experience.
+
+Understanding of fundamental design principles behind a scalable application.
+
+Prior experience collaborating with Product Managers and Owners.
+
+Experience in creatin g database schemas that represent and support business processes,
+
+Experience with one or more of the following databases - PostgreSQL, Oracle, SQL Server, MongoDB, DynamoDB.
+
+Familiarity with AWS or Azure
+
+
+Preferred Qualifications
+
+Experience with microservice and serverless architectures.
+
+Experience with  Angular.
+
+Deep understanding and practical experience implementing and optimizing CI/CD pipelines, including extensive use of tools like GitHub Actions, Jenkins, GitLab CI, etc.
+
+
+Our recruitment process
+
+Recruiter Screen (30 min)
+
+Technical Interview (30 min)
+
+Client Interview I (tech interview 1 h)
+
+Client Interview II (tech interview 1h)
+
+Client Interview III (comm & collab interview w/ Dir of Eng. 30 min)
+
+Client Interview IV (comm & collab interview w/ Sr. Product Manager 30 min)
+
+We strive to move efficiently from step to step so that the recruitment process can be as fast as possible.

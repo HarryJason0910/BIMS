@@ -69,6 +69,8 @@ describe('ResumeController', () => {
           techStack: ['React', 'TypeScript', 'AWS'],
           score: 100,
           createdAt: new Date('2024-01-01'),
+          matchedSkills: ['React', 'TypeScript', 'AWS'],
+          missingSkills: [],
         },
         {
           id: 'resume2',
@@ -77,6 +79,8 @@ describe('ResumeController', () => {
           techStack: ['React', 'TypeScript'],
           score: 66,
           createdAt: new Date('2024-01-02'),
+          matchedSkills: ['React', 'TypeScript'],
+          missingSkills: ['AWS'],
         },
       ];
 

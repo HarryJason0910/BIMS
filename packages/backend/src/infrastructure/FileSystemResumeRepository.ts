@@ -4,12 +4,11 @@
  * Implements IResumeRepository by retrieving resume metadata from bids in the database
  * and providing file access to the resume files.
  * 
- * Part of: resume-selection-from-history feature
- * Requirements: 1.1, 1.2, 4.3, 4.4
+ * Part of: resume-selection-from-history feature, enhanced-skill-matching feature
+ * Requirements: 1.1, 1.2, 4.3, 4.4, 13.1, 13.2, 13.6
  */
 
 import { promises as fs } from 'fs';
-import * as path from 'path';
 import { IResumeRepository } from '../application/IResumeRepository';
 import { IBidRepository } from '../application/IBidRepository';
 import { ResumeMetadata } from '../domain/ResumeMetadata';
@@ -17,7 +16,7 @@ import { TechStackValue } from '../domain/TechStackValue';
 
 export class FileSystemResumeRepository implements IResumeRepository {
   constructor(
-    private readonly uploadDirectory: string,
+    _uploadDirectory: string,
     private readonly bidRepository: IBidRepository
   ) {}
 
@@ -30,7 +29,7 @@ export class FileSystemResumeRepository implements IResumeRepository {
    * @returns Promise resolving to array of ResumeMetadata objects
    * @throws Error if database access fails
    * 
-   * Requirements: 1.1, 1.2
+   * Requirements: 1.1, 1.2, 13.1, 13.2
    */
   async getAllResumeMetadata(): Promise<ResumeMetadata[]> {
     try {
@@ -64,15 +63,22 @@ export class FileSystemResumeRepository implements IResumeRepository {
         // Generate unique ID from file path
         const id = this.generateId(resumePath);
 
+        // Get jdSpecId from bid if available (will be null for older bids)
+        const jdSpecId = (bid as any).jdSpecId || null;
+
+        // Extract skills from both legacy (string[]) and new (LayerSkills) formats
+        const skills = this.extractSkills(bid.mainStacks);
+
         // Create ResumeMetadata object from bid data
         metadata.push(
           new ResumeMetadata(
             id,
             bid.company,
             bid.role,
-            new TechStackValue(bid.mainStacks),
+            new TechStackValue(skills),
             resumePath,
-            createdAt
+            createdAt,
+            jdSpecId
           )
         );
       }
@@ -82,6 +88,30 @@ export class FileSystemResumeRepository implements IResumeRepository {
     } catch (error) {
       console.error('[FileSystemResumeRepository] Error retrieving resume metadata:', error);
       throw new Error(`Failed to retrieve resume metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Find all resumes associated with a specific JD specification.
+   * 
+   * Retrieves all resumes that were created for a particular job description,
+   * enabling resume match rate calculation and historical analysis.
+   * 
+   * @param jdSpecId - The JD specification ID to search for
+   * @returns Promise resolving to array of ResumeMetadata objects
+   * 
+   * Requirements: 13.1, 13.2
+   */
+  async findByJDSpecId(jdSpecId: string): Promise<ResumeMetadata[]> {
+    try {
+      // Get all resume metadata
+      const allResumes = await this.getAllResumeMetadata();
+      
+      // Filter by jdSpecId
+      return allResumes.filter(resume => resume.getJDSpecId() === jdSpecId);
+    } catch (error) {
+      console.error('[FileSystemResumeRepository] Error finding resumes by JD spec ID:', error);
+      throw new Error(`Failed to find resumes by JD spec ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -120,6 +150,25 @@ export class FileSystemResumeRepository implements IResumeRepository {
     } catch (error) {
       throw new Error(`Failed to retrieve resume file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Helper method to extract skills from both legacy (string[]) and new (LayerSkills) formats
+   */
+  private extractSkills(mainStacks: string[] | any): string[] {
+    if (Array.isArray(mainStacks)) {
+      // Legacy format
+      return mainStacks;
+    }
+    
+    // New format (LayerSkills) - flatten all layers
+    const allSkills: string[] = [];
+    const layers = ['frontend', 'backend', 'database', 'cloud', 'devops', 'others'];
+    for (const layer of layers) {
+      const layerSkills = mainStacks[layer] || [];
+      allSkills.push(...layerSkills.map((s: any) => s.skill));
+    }
+    return allSkills;
   }
 
   /**

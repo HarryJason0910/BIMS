@@ -42,7 +42,9 @@ describe('InterviewController Integration Tests', () => {
 
     const cancelInterviewUseCase = new CancelInterviewUseCase(
       interviewRepository,
-      bidRepository
+      bidRepository,
+      companyHistory,
+      companyHistoryRepository
     );
 
     const interviewController = new InterviewController(
@@ -65,8 +67,8 @@ describe('InterviewController Integration Tests', () => {
         company: 'TechCorp',
         client: 'TechCorp',
         role: 'Software Engineer',
-        jobDescriptionPath: 'Build amazing software',
-        resumePath: 'resume_v1.pdf',
+        jobDescription: 'Build amazing software',
+        resume: 'resume_v1.pdf',
         interviewType: InterviewType.HR,
         recruiter: 'John Doe',
         attendees: ['Jane Smith', 'Bob Johnson'],
@@ -88,7 +90,8 @@ describe('InterviewController Integration Tests', () => {
         mainStacks: ['TypeScript'],
         jobDescriptionPath: 'Build amazing software',
         resumePath: 'resume_v1.pdf',
-        origin: BidOrigin.BID,
+        origin: BidOrigin.LINKEDIN,
+        recruiter: 'Test Recruiter',
       });
       await bidRepository.save(bid);
 
@@ -136,8 +139,8 @@ describe('InterviewController Integration Tests', () => {
         company: 'TechCorp',
         client: 'TechCorp',
         role: 'Software Engineer',
-        jobDescriptionPath: 'Job 1',
-        resumePath: 'resume_v1.pdf',
+        jobDescription: 'Job 1',
+        resume: 'resume_v1.pdf',
         interviewType: InterviewType.HR,
         recruiter: 'John Doe',
         attendees: ['Jane Smith'],
@@ -156,8 +159,8 @@ describe('InterviewController Integration Tests', () => {
         company: 'TechCorp',
         client: 'TechCorp',
         role: 'Software Engineer',
-        jobDescriptionPath: 'Job 1',
-        resumePath: 'resume_v1.pdf',
+        jobDescription: 'Job 1',
+        resume: 'resume_v1.pdf',
         interviewType: InterviewType.HR,
         recruiter: 'John Doe',
         attendees: ['Jane Smith'],
@@ -169,8 +172,8 @@ describe('InterviewController Integration Tests', () => {
         company: 'DataCorp',
         client: 'DataCorp',
         role: 'Data Engineer',
-        jobDescriptionPath: 'Job 2',
-        resumePath: 'resume_v1.pdf',
+        jobDescription: 'Job 2',
+        resume: 'resume_v1.pdf',
         interviewType: InterviewType.TECH_INTERVIEW_1,
         recruiter: 'Bob Johnson',
         attendees: ['Alice Brown'],
@@ -193,8 +196,8 @@ describe('InterviewController Integration Tests', () => {
         company: 'TechCorp',
         client: 'TechCorp',
         role: 'Software Engineer',
-        jobDescriptionPath: 'Job 1',
-        resumePath: 'resume_v1.pdf',
+        jobDescription: 'Job 1',
+        resume: 'resume_v1.pdf',
         interviewType: InterviewType.HR,
         recruiter: 'John Doe',
         attendees: ['Jane Smith'],
@@ -219,8 +222,8 @@ describe('InterviewController Integration Tests', () => {
         company: 'TechCorp',
         client: 'TechCorp',
         role: 'Software Engineer',
-        jobDescriptionPath: 'Job 1',
-        resumePath: 'resume_v1.pdf',
+        jobDescription: 'Job 1',
+        resume: 'resume_v1.pdf',
         interviewType: InterviewType.HR,
         recruiter: 'John Doe',
         attendees: ['Jane Smith'],
@@ -250,8 +253,8 @@ describe('InterviewController Integration Tests', () => {
         company: 'TechCorp',
         client: 'TechCorp',
         role: 'Software Engineer',
-        jobDescriptionPath: 'Job 1',
-        resumePath: 'resume_v1.pdf',
+        jobDescription: 'Job 1',
+        resume: 'resume_v1.pdf',
         interviewType: InterviewType.HR,
         recruiter: 'John Doe',
         attendees: ['Jane Smith'],

@@ -1,26 +1,26 @@
 @echo off
-title Job Bid Management System - Quick Start
+title Job Bid Management System - Development
 color 0B
 
 echo.
 echo ==========================================
-echo  Job Bid Management System - Quick Start
+echo  Job Bid Management System - Development
 echo ==========================================
 echo.
 
-REM Quick start without extensive checks
+REM Start backend server
 echo [INFO] Starting backend server...
-start "Backend API" cmd /k "cd /d packages\backend && npm run dev"
+start "Backend API" cmd /k "cd /d %~dp0packages\backend && npm run dev"
 
 timeout /t 3 /nobreak >nul
 
 echo [INFO] Starting frontend application...
-start "Frontend App" cmd /k "cd /d packages\frontend && npm run tauri:dev"
+start "Frontend App" cmd /k "cd /d %~dp0packages\frontend && npm run dev"
 
 echo.
 echo [SUCCESS] System is starting...
 echo Backend: http://localhost:3000
-echo Frontend: Tauri desktop app will launch
+echo Frontend: http://localhost:5173
 echo.
 echo Press any key to close this window...
 pause >nul

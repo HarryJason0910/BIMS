@@ -1,0 +1,44 @@
+Job Description:
+About the Role
+
+We are seeking a Senior Python Engineer with a passion for platform engineering and developer experience. In this role, you will design and build internal developer platforms, command-line tools, and automation frameworks that empower engineering teams to ship faster and more reliably. You will work at the intersection of software engineering and infrastructure, creating the foundational tools that development teams depend on daily.
+
+Key Responsibilities
+
+Design, develop, and maintain production-grade command-line tools and developer utilities using Python.
+Build and extend internal developer platforms that abstract infrastructure complexity and improve developer productivity
+Create automation frameworks and scripts for CI/CD pipelines, testing, and deployment workflows
+Develop APIs and backend services that power internal tooling, build, deployment and platform services.
+Understand packaging, modules, repositories within Python ecosystem and other languages as well.
+Collaborate with engineering teams to understand pain points and design solutions that improve the developer experience
+Write comprehensive documentation, tutorials, and runbooks for tools and platforms you build.
+Implement observability, logging, and metrics for platform services
+Participate in code reviews, architectural discussions, and mentoring of junior engineers
+Required Qualifications
+
+8+ years of professional software development experience with Python as a primary language
+Strong experience building CLI tools using frameworks such as Click, Typer, or argparse
+Proficiency with Python packaging, distribution (PyPI, pip), and dependency management (Poetry, pipenv)
+Experience with API development using FastAPI, Flask, or similar frameworks
+Solid understanding of software design patterns, clean code principles, and testing methodologies
+Hands-on experience with Git, GitHub/GitLab, and CI/CD platforms (GitHub Actions, Jenkins, CircleCI)
+Advanced proficiency using mulitple AI Coding Assistant to develop software with guardrails to ensure high quality.
+Familiarity with containerization (Docker) and orchestration concepts (Kubernetes)
+Experience working with cloud platforms (AWS, GCP, or Azure)
+Strong written and verbal communication skills
+Preferred Qualifications
+
+Experience building internal developer platforms or platform-as-a-service solutions
+Familiarity with Infrastructure as Code tools (Terraform)
+Experience with asynchronous programming (asyncio, aiohttp)
+Knowledge of protocol buffers, gRPC, or GraphQL
+Contributions to open-source projects or published Python packages
+Experience with observability tools (Prometheus, Grafana, DataDog, OpenTelemetry)
+Background in DevOps, SRE, platform, or infrastructure engineering
+Technical Environment
+
+Languages: Python 3.10+, Bash, Go (nice to have)
+Frameworks & Tools: Click, Typer, FastAPI, Pydantic, Rich, pytest
+Infrastructure: Docker, Kubernetes, Terraform, AWS/GCP
+CI/CD: GitHub Actions, Jenkins, ArgoCD
+Databases: PostgreSQL, Redis, DynamoDB

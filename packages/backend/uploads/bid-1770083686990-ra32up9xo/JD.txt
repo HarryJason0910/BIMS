@@ -1,0 +1,51 @@
+About the job
+About Truelogic
+
+At Truelogic we are a leading provider of nearshore staff augmentation services headquartered in New York. For over two decades, we’ve been delivering top-tier technology solutions to companies of all sizes, from innovative startups to industry leaders, helping them achieve their digital transformation goals.
+
+Our team of 600+ highly skilled tech professionals, based in Latin America, drives digital disruption by partnering with U.S. companies on their most impactful projects. Whether collaborating with Fortune 500 giants or scaling startups, we deliver results that make a difference.
+
+By applying for this position, you’re taking the first step in joining a dynamic team that values your expertise and aspirations. We aim to align your skills with opportunities that foster exceptional career growth and success while contributing to transformative projects that shape the future.
+
+Our Client
+
+It is an organization dedicated to transforming the mental health care experience by reducing the complexity and confusion many people face when seeking support, connecting millions of users with trusted mental health resources so they can find help quickly and compassionately. Its platform includes a robust EHR system widely used by school districts across the United States to enable large-scale care coordination and billing, while also developing the next generation of intelligent, AI-enabled systems such as personalized provider matching, NLP-based triage, and conversational tools powered by advanced language models—representing a rare opportunity to build strong AI foundations early and keep its technology at the forefront of mental health care innovation.
+
+Job Summary
+
+As a Senior DevOps Engineer, this role is responsible for owning the AWS infrastructure end-to-end in a highly hands-on capacity, focused on designing, deploying, and operating cloud environments with strong principles of automation and reliability. It involves managing CI/CD pipelines, implementing secure secrets management through AWS Secrets Manager, and developing automation scripts in Python and Bash to eliminate manual processes. The platform operates بالكامل on AWS, requiring work across core services, containers, monitoring, and observability, while partnering closely with software engineers to troubleshoot production issues and step in wherever necessary to maintain system stability, security, and performance. Cost visibility and optimization are also essential, including the implementation of guardrails, monitoring, and alerts to prevent unnecessary spending caused by misconfigurations or inefficient code, ensuring sustainable scalability. Overall, the position is ideal for a DevOps professional with strong AWS expertise, an automation-first mindset, and a proactive sense of ownership over cloud reliability, security, and efficiency within a healthcare-grade environment.
+
+Responsibilities
+
+Infrastructure as Code (IaC): Liderar el diseño y la gestión del entorno cloud utilizando Pulumi, garantizando infraestructura reproducible y controlada por versiones. 
+CI/CD Leadership: Arquitectar y mantener pipelines de despliegue robustos con GitHub Actions, optimizando el flujo de desarrollo a producción para aplicaciones Python/Django y React. 
+Security & Compliance: Colaborar con equipos de ingeniería y liderazgo para mantener una alta postura de seguridad, utilizando Vanta para automatizar cumplimiento y asegurar que el sistema EHR cumpla los más altos estándares de protección de datos. 
+AWS Cloud Excellence: Optimizar y escalar el ecosistema AWS (ECS, RDS, Lambda, S3, DynamoDB) para soportar aplicaciones distribuidas de alto rendimiento. 
+Operational Reliability: Implementar sistemas avanzados de monitoreo, logging y alertas en producción para garantizar disponibilidad 24/7 de servicios críticos. 
+Cross-Functional Collaboration: Trabajar de forma cercana con ingenieros de software para definir requerimientos e implementar mejores prácticas dentro de un entorno Ágil. 
+
+Qualifications And Job Requirements
+
+Professional Experience: 8+ years of experience in DevOps Engineering or Application Engineering with integrated Infrastructure as Code (IaC). 
+AWS Expertise: Advanced, in-depth knowledge of AWS, with extensive experience deploying and managing scalable, cloud-native architectures. 
+IaC Proficiency: Proven track record using Pulumi (or similar tools such as Terraform or CloudFormation) to manage complex infrastructure. 
+Automation Mindset: Strong experience building CI/CD workflows in GitHub and automating manual processes. 
+Containerization & Orchestration: Hands-on experience with Docker, ECS, and Kubernetes for managing microservices. 
+Observability: Advanced knowledge of monitoring and observability tools such as New Relic. 
+Leadership & Communication: Demonstrated ability to lead infrastructure initiatives and clearly communicate technical concepts to both technical and non-technical stakeholders. 
+
+What we offer
+
+100% Remote Work: Enjoy the freedom to work from the location that helps you thrive. All it takes is a laptop and a reliable internet connection. 
+Highly Competitive USD Pay: Earn an excellent, market-leading compensation in USD, that goes beyond typical market offerings. 
+Paid Time Off: We value your well-being. Our paid time off policies ensure you have the chance to unwind and recharge when needed. 
+Work with Autonomy: Enjoy the freedom to manage your time as long as the work gets done. Focus on results, not the clock. 
+Work with Top American Companies: Grow your expertise working on innovative, high-impact projects with Industry-Leading U.S. Companies. 
+
+Why You’ll Like Working Here
+
+A Culture That Values You: We prioritize well-being and work-life balance, offering engagement activities and fostering dynamic teams to ensure you thrive both personally and professionally. 
+Diverse, Global Network: Connect with over 600 professionals in 25+ countries, expand your network, and collaborate with a multicultural team from Latin America. 
+Team Up with Skilled Professionals: Join forces with senior talent. All of our team members are seasoned experts, ensuring you're working with the best in your field. 
+
+Apply now!
